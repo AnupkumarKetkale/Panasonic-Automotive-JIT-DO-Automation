@@ -1,0 +1,1684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delivery Automation Cockpit – Prototype</title>
+<style>
+/* css/theme.css */
+/* Theme tokens: SAP Fiori-like base (Horizon) with Incture brand colours, font and logo on top. */
+:root {
+  --font: Arial, Helvetica, sans-serif;
+  --radius: 8px;
+  --radius-sm: 4px;
+  --shadow: 0 0 0 1px rgba(34,53,72,.10), 0 2px 4px rgba(34,53,72,.08);
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --surface-2: #eaf4fb;
+  --border: #d9dde1;
+  --text: #24272A;
+  --text-muted: #556b82;
+  --primary: #0087D5;
+  --primary-hover: #006fb0;
+  --on-primary: #ffffff;
+  --accent: #FE6266;
+  --shell-bg: #ffffff;
+  --shell-text: #24272A;
+  --success: #188918;
+  --warning: #c35500;
+  --danger: #bb0000;
+  --info: #503B96;
+  --density: 0.92;
+  /* Brand palette for charts (Incture) */
+  --c1: #0087D5; --c2: #FE6266; --c3: #EAAE85; --c4: #503B96; --c5: #87C6A9; --c6: #333333;
+}
+
+</style>
+<style>
+/* css/app.css */
+/* Component styles. Reference tokens from theme.css only — no hard-coded brand colors here. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: var(--font); color: var(--text); background: var(--bg); font-size: calc(15px * var(--density)); line-height: 1.45; }
+h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.1rem; margin: 0 0 .75rem; }
+.muted { color: var(--text-muted); }
+svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+a { color: var(--primary); }
+
+/* Shell */
+.shell { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: .75rem; height: 52px; padding: 0 1rem; background: var(--shell-bg); color: var(--shell-text); border-bottom: 1px solid var(--border); }
+.shell .logo { height: 28px; }
+.product-name { font-weight: 700; }
+.proto-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; padding: .1rem .45rem; border: 1px solid currentColor; border-radius: 999px; opacity: .7; }
+.shell-spacer { flex: 1; }
+.icon-btn, .tool-btn { display: inline-flex; align-items: center; gap: .35rem; background: none; border: 0; color: inherit; cursor: pointer; padding: .4rem .55rem; border-radius: var(--radius-sm); font: inherit; font-size: .85rem; }
+.icon-btn:hover, .tool-btn:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.tool-btn[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
+.role-switch { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; }
+.role-switch select { font: inherit; padding: .2rem .4rem; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
+/* Screen index */
+.screen-index { position: fixed; top: 52px; left: 0; bottom: 0; width: 260px; overflow: auto; background: var(--surface); border-right: 1px solid var(--border); padding: .75rem 0; z-index: 20; transform: translateX(-100%); transition: transform .2s; }
+body.index-open .screen-index { transform: none; }
+body.index-open .stage { margin-left: 260px; }
+.screen-index h3 { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: .9rem 1rem .3rem; }
+.screen-index a { display: flex; justify-content: space-between; gap: .5rem; padding: .4rem 1rem; color: var(--text); text-decoration: none; font-size: .9rem; }
+.screen-index a:hover { background: var(--surface-2); }
+.screen-index a.active { background: var(--surface-2); color: var(--primary); font-weight: 600; box-shadow: inset 3px 0 0 var(--primary); }
+.screen-index .num { color: var(--text-muted); font-size: .75rem; }
+
+/* Stage & screens */
+.stage { padding: 1.5rem; max-width: 1200px; margin: 0 auto; transition: margin .2s; }
+.screen { display: none; }
+.screen.active { display: block; animation: fade .15s ease-out; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.back { display: inline-block; margin-bottom: .75rem; text-decoration: none; font-size: .9rem; }
+.card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.25rem; margin-bottom: 1rem; }
+.object-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.facts { display: flex; gap: 2rem; }
+.facts div { display: flex; flex-direction: column; }
+.center-state { text-align: center; padding: 3rem 1rem; }
+.state-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 1rem; }
+.state-icon.success { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.state-icon svg { width: 28px; height: 28px; }
+.empty { padding: 2rem; text-align: center; color: var(--text-muted); }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; padding: .5rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn.primary:hover { background: var(--primary-hover); }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.footer-bar { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: .5rem; padding: .75rem 1rem; background: var(--surface); border-top: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+/* Forms */
+.form { max-width: 640px; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-weight: 600; margin-bottom: .3rem; font-size: .9rem; }
+.field .req { color: var(--danger); }
+input, select, textarea { font: inherit; color: var(--text); }
+.field input, .field select, .field textarea, .filter-bar input, .filter-bar select { width: 100%; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid color-mix(in srgb, var(--primary) 40%, transparent); border-color: var(--primary); }
+.field.invalid input, .field.invalid select, .field.invalid textarea { border-color: var(--danger); }
+.field .error { color: var(--danger); font-size: .82rem; margin-top: .25rem; min-height: 1em; }
+.form-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; }
+.filter-bar { display: grid; grid-template-columns: 1fr 200px; gap: .75rem; margin-bottom: 1rem; }
+
+/* Table */
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding: .6rem .5rem; }
+.table td { border-bottom: 1px solid var(--border); padding: .7rem .5rem; }
+.table tbody tr[data-go] { cursor: pointer; }
+.table tbody tr[data-go]:hover { background: var(--surface-2); }
+.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Status */
+.status { display: inline-flex; align-items: center; gap: .35rem; font-weight: 600; font-size: .85rem; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.status.success { color: var(--success); } .status.warning { color: var(--warning); }
+.status.danger { color: var(--danger); } .status.info { color: var(--info); } .status.neutral { color: var(--text-muted); }
+
+/* Panels & dialogs */
+.side-panel { position: fixed; top: 52px; right: 0; bottom: 0; width: 340px; background: var(--surface); border-left: 1px solid var(--border); z-index: 25; overflow: auto; padding: 1rem; box-shadow: var(--shadow); }
+.panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+.panel-head h2 { margin: 0; }
+.panel-head .icon-btn { font-size: 1.4rem; line-height: 1; }
+.overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); z-index: 50; display: grid; place-items: center; padding: 1rem; }
+.overlay[hidden], .side-panel[hidden] { display: none; }
+.dialog { background: var(--surface); border-radius: var(--radius); padding: 1.25rem; width: min(520px, 100%); max-height: 85vh; overflow: auto; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+.dialog.wide { width: min(1000px, 100%); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1rem; }
+
+/* Annotations */
+body.notes-on .stage { margin-right: 340px; }
+body.notes-on [data-note] { outline: 2px dashed var(--accent); outline-offset: 2px; position: relative; }
+.note-badge { position: absolute; z-index: 15; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.notes-list { padding-left: 1.4rem; margin: 0; }
+.notes-list li { margin-bottom: .9rem; cursor: pointer; }
+.notes-list li.hl { background: var(--surface-2); border-radius: var(--radius-sm); }
+.notes-list .where { font-size: .78rem; color: var(--text-muted); }
+.req-chip { display: inline-block; font-size: .72rem; font-weight: 700; padding: .05rem .4rem; margin: .15rem .2rem 0 0; border-radius: 999px; background: var(--surface-2); color: var(--primary); border: 1px solid var(--border); text-decoration: none; }
+.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { 0%,40% { box-shadow: 0 0 0 4px var(--accent); } 100% { box-shadow: none; } }
+
+/* Matrix */
+.matrix { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.matrix th, .matrix td { border-bottom: 1px solid var(--border); padding: .5rem; text-align: left; vertical-align: top; }
+.matrix td:first-child { white-space: nowrap; }
+.matrix th { color: var(--text-muted); font-size: .75rem; text-transform: uppercase; }
+.matrix .gap td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+.cov-summary { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.cov-summary strong { font-size: 1.3rem; display: block; }
+
+/* Toast */
+.toast-host { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 60; display: grid; gap: .5rem; }
+.toast { background: var(--text); color: var(--surface); padding: .65rem 1rem; border-radius: var(--radius-sm); box-shadow: var(--shadow); font-size: .9rem; animation: fade .2s; }
+.toast.success { background: var(--success); color: #fff; } .toast.danger { background: var(--danger); color: #fff; }
+
+/* Role gating */
+.role-hidden { display: none !important; }
+
+@media (max-width: 800px) {
+  body.index-open .stage, body.notes-on .stage { margin-left: 0; margin-right: 0; }
+  .side-panel { width: 100%; }
+  .filter-bar { grid-template-columns: 1fr; }
+  .tool-btn span, .role-switch span { display: none; }
+}
+@media print {
+  .shell, .screen-index, .side-panel, .overlay, .toast-host { display: none !important; }
+  .stage { margin: 0 !important; }
+  .screen { display: block !important; page-break-after: always; }
+}
+
+/* ===== Device frame (PROTO.device = "ios" | "android") =====
+   Screens render inside a 390×844 phone. Build screens mobile-first: one column, full-width
+   controls, m-navbar on top, m-tabbar at the bottom. Panels, dialogs and toasts stay outside the frame. */
+body.device { background: color-mix(in srgb, var(--text) 8%, var(--bg)); }
+body.device .stage { width: 390px; max-width: calc(100vw - 2rem); height: min(844px, calc(100vh - 52px - 3rem)); margin: 1.5rem auto; padding: 0;
+  overflow-y: auto; overflow-x: hidden; background: var(--bg); border: 10px solid #1b1b1f; border-radius: 46px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.28); position: relative; scrollbar-width: none; }
+body.device .stage::-webkit-scrollbar { display: none; }
+body.device.index-open .stage { margin-left: max(280px, calc(50vw - 195px + 130px)); }
+body.device.notes-on .stage { margin-right: 360px; }
+body.device .screen { min-height: 100%; display: none; flex-direction: column; }
+body.device .screen.active { display: flex; }
+body.device .m-body { flex: 1; padding: .75rem 1rem 1.25rem; }
+body.device .card { padding: 1rem; }
+body.device .facts { gap: 1rem; flex-wrap: wrap; }
+body.device .filter-bar { grid-template-columns: 1fr; }
+body.device .form-actions .btn, body.device .btn.block { width: 100%; }
+.m-status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.4rem; font-size: .8rem; font-weight: 600; background: var(--shell-bg); color: var(--shell-text); position: sticky; top: 0; z-index: 6; }
+.m-navbar { position: sticky; top: 44px; z-index: 5; display: flex; align-items: center; gap: .5rem; min-height: 48px; padding: .35rem .75rem; background: var(--shell-bg); color: var(--shell-text); border-bottom: 1px solid var(--border); }
+.m-navbar .title { flex: 1; font-weight: 600; font-size: 1.02rem; }
+.m-navbar a, .m-navbar button { color: inherit; background: none; border: 0; font: inherit; text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; }
+.m-largetitle { font-size: 1.9rem; font-weight: 700; padding: .5rem 1rem 0; margin: 0; }
+.m-tabbar { position: sticky; bottom: 0; z-index: 5; display: flex; background: var(--surface); border-top: 1px solid var(--border); padding: .35rem 0 1.1rem; }
+.m-tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .15rem; font-size: .68rem; color: var(--text-muted); text-decoration: none; }
+.m-tabbar a.on { color: var(--primary); font-weight: 600; }
+.m-list { list-style: none; margin: 0 0 1rem; padding: 0; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.m-list li, .m-list a.row { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; border-bottom: 1px solid var(--border); color: var(--text); text-decoration: none; cursor: pointer; }
+.m-list li:last-child { border-bottom: 0; }
+.m-list .sub { font-size: .82rem; color: var(--text-muted); }
+.m-list .grow { flex: 1; min-width: 0; }
+.m-section { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin: 1rem .25rem .4rem; }
+.fab { position: sticky; bottom: 76px; margin-left: auto; margin-right: 1rem; width: 56px; height: 56px; border-radius: 16px; border: 0; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,.25); cursor: pointer; z-index: 4; }
+/* Platform flavour */
+body.device-ios .m-navbar { justify-content: space-between; }
+body.device-ios .m-navbar .title { text-align: center; }
+body.device-ios .btn { border-radius: 12px; }
+body.device-android .btn { border-radius: 999px; }
+body.device-android .m-navbar { min-height: 56px; border-bottom: 0; }
+body.device-android .m-navbar .title { font-size: 1.15rem; font-weight: 500; }
+body.device-android .m-tabbar { padding-bottom: .9rem; background: var(--surface-2); border-top: 0; }
+body.device-android .m-tabbar a.on svg { background: color-mix(in srgb, var(--primary) 18%, transparent); border-radius: 999px; width: 56px; padding: 2px 16px; box-sizing: content-box; }
+@media print { body.device .stage { height: auto; overflow: visible; border: 0; box-shadow: none; } }
+
+/* ======================= Project components (tokens only) ======================= */
+.stage { max-width: 1400px; }
+h1 { font-size: 1.45rem; letter-spacing: -.01em; }
+.shell { height: 56px; box-shadow: 0 1px 0 var(--border), 0 2px 6px rgba(34,53,72,.06); }
+.shell .logo { height: 26px; }
+.shell .divider { width: 1px; height: 26px; background: var(--border); }
+.shell .cust { font-size: .8rem; color: var(--text-muted); line-height: 1.1; }
+.shell .cust b { display: block; color: var(--text); font-size: .95rem; }
+.screen-index, .side-panel { top: 56px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-weight: 700; font-size: .78rem; }
+.bell { position: relative; }
+.bell .dot { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.popover { position: fixed; top: 58px; right: 1rem; width: 380px; background: var(--surface); border-radius: var(--radius); box-shadow: 0 12px 32px rgba(0,0,0,.18); z-index: 40; padding: .5rem 0; }
+.popover[hidden] { display: none; }
+.popover h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: .4rem 1rem .5rem; }
+.popover a { display: block; padding: .6rem 1rem; border-top: 1px solid var(--border); color: var(--text); text-decoration: none; font-size: .88rem; }
+.popover a:hover { background: var(--surface-2); }
+
+/* Page header (Fiori dynamic page) */
+.dyn-head { background: var(--surface); margin: -1.5rem -1.5rem 1.25rem; padding: 1.1rem 1.5rem .9rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.dyn-head .crumbs { font-size: .8rem; color: var(--text-muted); margin-bottom: .25rem; }
+.dyn-head .crumbs a { text-decoration: none; }
+.dyn-head .actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.body.index-open .dyn-head { margin-left: -1.5rem; }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.kpi { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem 1.1rem; cursor: default; position: relative; overflow: hidden; }
+.kpi[data-go] { cursor: pointer; } .kpi[data-go]:hover { box-shadow: 0 0 0 2px var(--primary); }
+.kpi .lbl { font-size: .8rem; color: var(--text-muted); font-weight: 600; }
+.kpi .val { font-size: 2rem; font-weight: 700; margin: .25rem 0 .1rem; font-variant-numeric: tabular-nums; }
+.kpi .sub { font-size: .78rem; color: var(--text-muted); }
+.kpi .val.good { color: var(--success); } .kpi .val.bad { color: var(--danger); } .kpi .val.warn { color: var(--warning); } .kpi .val.brand { color: var(--primary); }
+
+.grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; }
+.grid-2e { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 1000px) { .grid-2, .grid-2e, .grid-3 { grid-template-columns: 1fr; } }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: .75rem; flex-wrap: wrap; }
+.card-head h2 { margin: 0; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-bottom: .6rem; flex-wrap: wrap; }
+.toolbar h2 { margin: 0; font-size: 1rem; }
+.btn.sm { padding: .3rem .65rem; font-size: .85rem; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--primary); }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 16px; height: 16px; }
+
+/* Filter bar (Fiori) */
+.fbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .75rem; align-items: end; background: var(--surface); padding: 1rem 1.1rem; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1rem; }
+.fbar label { display: block; font-size: .78rem; color: var(--text-muted); font-weight: 600; margin-bottom: .25rem; }
+.fbar input, .fbar select { width: 100%; padding: .45rem .6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.fbar .go { display: flex; gap: .5rem; justify-content: flex-end; }
+
+/* Table extras */
+.table td, .table th { padding: .55rem .5rem; font-size: .9rem; }
+.table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--bg) 55%, transparent); }
+.table .mono { font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+.table .sub { display: block; font-size: .78rem; color: var(--text-muted); }
+.table tr.sel { box-shadow: inset 3px 0 0 var(--primary); }
+
+/* Decision badges (text + coloured chip so colour never carries meaning alone) */
+.dec { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
+.dec.full { background: color-mix(in srgb, var(--success) 13%, transparent); color: var(--success); }
+.dec.partial { background: color-mix(in srgb, var(--primary) 13%, transparent); color: #00609a; }
+.dec.hold { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); }
+.dec.nodel { background: color-mix(in srgb, var(--danger) 11%, transparent); color: var(--danger); }
+.dec.skip { background: color-mix(in srgb, var(--info) 12%, transparent); color: var(--info); }
+.dec.wait { background: var(--bg); color: var(--text-muted); border-color: var(--border); }
+.dec.ovr { background: color-mix(in srgb, var(--c3) 30%, transparent); color: #7a4a22; }
+
+/* Icon tab bar */
+.itabs { display: flex; gap: .25rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; overflow-x: auto; }
+.itab { background: none; border: 0; font: inherit; padding: .65rem .9rem; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; display: flex; align-items: center; gap: .45rem; white-space: nowrap; font-weight: 600; font-size: .9rem; }
+.itab .cnt { font-size: .75rem; background: var(--bg); border-radius: 999px; padding: 0 .45rem; color: var(--text); }
+.itab.on { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* Process flow (run monitor) */
+.pflow { display: grid; grid-template-columns: repeat(6, 1fr); gap: .5rem; margin-bottom: 1rem; }
+.pstep { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: .8rem; position: relative; border-top: 3px solid var(--border); transition: border-color .3s, background .3s; }
+.pstep .n { font-size: .72rem; font-weight: 700; color: var(--text-muted); }
+.pstep .t { font-weight: 700; font-size: .9rem; margin: .15rem 0; }
+.pstep .s { font-size: .78rem; color: var(--text-muted); }
+.pstep.active { border-top-color: var(--primary); background: var(--surface-2); }
+.pstep.done { border-top-color: var(--success); }
+.pstep.active .n::after { content: " · running"; color: var(--primary); }
+.pstep.done .n::after { content: " · done"; color: var(--success); }
+@media (max-width: 1000px) { .pflow { grid-template-columns: repeat(3, 1fr); } }
+.progress { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--primary); width: 0; transition: width .3s; }
+.log { font-family: Consolas, "Courier New", monospace; font-size: .8rem; background: #1d2d3e; color: #dfe7ee; border-radius: var(--radius); padding: .8rem 1rem; height: 300px; overflow: auto; line-height: 1.55; }
+.log .ok { color: #8fd18f; } .log .w { color: #f3b77a; } .log .e { color: #ff9a9d; } .log .i { color: #7cc4f2; } .log .ts { color: #8aa0b4; }
+
+/* Object page */
+.ohead { background: var(--surface); margin: -1.5rem -1.5rem 0; padding: 1rem 1.5rem 0; border-bottom: 1px solid var(--border); }
+.ohead .top { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+.ohead .facts { display: flex; gap: 2.2rem; flex-wrap: wrap; margin: 1rem 0; }
+.ohead .facts > div span { font-size: .78rem; color: var(--text-muted); display: block; }
+.ohead .facts > div strong { font-size: 1rem; }
+.anchor { display: flex; gap: .25rem; overflow-x: auto; }
+.anchor a { padding: .6rem .9rem; text-decoration: none; color: var(--text-muted); font-weight: 600; font-size: .88rem; border-bottom: 3px solid transparent; }
+.anchor a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+.osec { margin-top: 1.25rem; scroll-margin-top: 70px; }
+.osec > h2 { font-size: 1.05rem; margin: 0 0 .6rem; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .9rem 1.5rem; }
+.form-grid .k { font-size: .78rem; color: var(--text-muted); } .form-grid .v { font-weight: 600; }
+
+/* Rule checks */
+.checks { list-style: none; margin: 0; padding: 0; }
+.checks li { display: grid; grid-template-columns: 28px 1fr auto; gap: .6rem; align-items: start; padding: .6rem 0; border-bottom: 1px solid var(--border); }
+.checks li:last-child { border-bottom: 0; }
+.ck { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+.ck.pass { background: var(--success); } .ck.fail { background: var(--danger); } .ck.na { background: var(--border); color: var(--text-muted); } .ck.warn { background: var(--warning); }
+.checks .d { font-size: .82rem; color: var(--text-muted); }
+.checks .r { font-size: .8rem; font-weight: 700; }
+
+/* Timeline */
+.tl { list-style: none; padding: 0; margin: 0; position: relative; }
+.tl::before { content: ""; position: absolute; left: 7px; top: 4px; bottom: 4px; width: 2px; background: var(--border); }
+.tl li { position: relative; padding: 0 0 .9rem 1.6rem; }
+.tl li::before { content: ""; position: absolute; left: 1px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 3px solid var(--primary); box-sizing: border-box; }
+.tl li.u::before { border-color: var(--c3); } .tl li.x::before { border-color: var(--danger); }
+.tl .when { font-size: .76rem; color: var(--text-muted); }
+.tl .what { font-size: .88rem; }
+
+/* Stock bar */
+.cover { display: flex; height: 26px; border-radius: 4px; overflow: hidden; background: var(--bg); border: 1px solid var(--border); position: relative; }
+.cover i { display: block; height: 100%; }
+.cover .lbl { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 .6rem; font-size: .78rem; font-weight: 700; }
+.legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .78rem; color: var(--text-muted); margin-top: .4rem; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: .3rem; vertical-align: -1px; }
+
+/* Message strips */
+.strip { display: flex; gap: .6rem; align-items: flex-start; padding: .65rem .9rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: .9rem; border: 1px solid; }
+.strip.info { background: color-mix(in srgb, var(--primary) 7%, var(--surface)); border-color: color-mix(in srgb, var(--primary) 35%, transparent); }
+.strip.warn { background: color-mix(in srgb, var(--warning) 8%, var(--surface)); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
+.strip.err { background: color-mix(in srgb, var(--danger) 6%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.strip.ok { background: color-mix(in srgb, var(--success) 7%, var(--surface)); border-color: color-mix(in srgb, var(--success) 35%, transparent); }
+.strip svg { margin-top: 1px; }
+.strip .grow { flex: 1; }
+
+/* SLA */
+.sla { font-weight: 700; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.sla.red { color: var(--danger); } .sla.amber { color: var(--warning); } .sla.green { color: var(--success); }
+
+/* Switch */
+.switch { display: inline-flex; align-items: center; gap: .55rem; cursor: pointer; font-weight: 600; font-size: .9rem; }
+.switch input { appearance: none; width: 40px; height: 22px; border-radius: 11px; background: var(--border); position: relative; cursor: pointer; transition: background .2s; margin: 0; padding: 0; border: 0; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.switch input:checked { background: var(--primary); }
+.switch input:checked::after { left: 21px; }
+.field .hint { font-size: .78rem; color: var(--text-muted); margin-top: .2rem; }
+.form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
+@media (max-width: 800px) { .form-cols { grid-template-columns: 1fr; } }
+fieldset.grp { border: 0; padding: 0; margin: 0 0 1rem; }
+fieldset.grp legend { font-weight: 700; font-size: 1rem; margin-bottom: .75rem; padding: 0; }
+.form.wide { max-width: none; }
+
+/* Demo scenario list */
+.scen { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.scen li { display: grid; grid-template-columns: 26px 1fr auto; gap: .6rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid var(--border); counter-increment: s; }
+.scen li:last-child { border-bottom: 0; }
+.scen li::before { content: counter(s); width: 24px; height: 24px; border-radius: 50%; background: var(--surface-2); color: var(--primary); font-weight: 700; font-size: .78rem; display: grid; place-items: center; }
+.scen .t { font-weight: 600; font-size: .9rem; } .scen .d { font-size: .8rem; color: var(--text-muted); }
+
+/* Funnel / bars */
+.hbar { display: grid; grid-template-columns: 150px 1fr 60px; gap: .6rem; align-items: center; margin-bottom: .55rem; font-size: .85rem; }
+.hbar .bar { height: 14px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.hbar .bar i { display: block; height: 100%; border-radius: 3px; }
+.hbar .n { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chart svg { width: 100%; height: auto; stroke: none; }
+.chart text { font-family: var(--font); font-size: 11px; fill: var(--text-muted); }
+.chart .vl { fill: var(--text); font-weight: 700; }
+
+.diff-up { color: var(--success); font-weight: 700; } .diff-down { color: var(--danger); font-weight: 700; }
+.pill { display: inline-block; font-size: .72rem; font-weight: 700; padding: .1rem .5rem; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); }
+.pill.blue { background: var(--surface-2); color: #00609a; border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+.pill.green { background: color-mix(in srgb, var(--success) 10%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 30%, transparent); }
+.pill.amber { background: color-mix(in srgb, var(--warning) 10%, transparent); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 30%, transparent); }
+.row-actions { display: flex; gap: .35rem; }
+.radio-card { display: block; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .65rem .8rem; margin-bottom: .5rem; cursor: pointer; }
+.radio-card:has(input:checked) { border-color: var(--primary); background: var(--surface-2); }
+.radio-card input { margin-right: .5rem; }
+.radio-card .d { font-size: .8rem; color: var(--text-muted); margin-left: 1.5rem; }
+.dialog .field input, .dialog .field select, .dialog .field textarea { width: 100%; padding: .5rem .65rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.kv { display: grid; grid-template-columns: 160px 1fr; gap: .35rem .75rem; font-size: .88rem; }
+.kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-weight: 600; }
+.bell .dot[hidden] { display: none; }
+
+</style>
+</head>
+<body>
+
+<!-- ============ SHELL ============ -->
+<header class="shell">
+  <button class="icon-btn" id="toggleIndex" title="Screen index" aria-label="Screen index">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAABKCAYAAACSJklIAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAIdUAACHVAQSctJ0AAArGSURBVHhe7Z1tjB1VGccHtkVWKaWlZdOiBWopLS9KNAY/aCAmoBhIJNpINDFqFI1+odSmBZpOd+855y4iEV8+8AEtEE1ksWCNQqHQTW0tGLrt3jnn3N22Crb6RU0BxWKrbddzZk+39+U5Z87M3pfZe59f8s/ee+f8n5mdmf/cmbkzZwIEQRAEQRAEQRAEQRAEQRAEQRAEQRAEQRAEQRAEQRAEQRAEQRAEQRAEaQKUHw+o/G96jX/AVEBmAsXoOfMK6UqK0amgKCfSi3/QVEDyDOG/nVpmSBeDQe9MqNxct8yQLgaD3llQ/iN4eSkhHcnSdb94NF6+TGWZ8pNKp+eFO14zgw0Y9M6Aio3wcqoQ0nHMJiNH5/Tv2WneTrEwfIlUL3MM+sxmsHyP3oLDy6hGSEfRt+GFQ72b9vwkfnNmGat1oXfg5Tf1R0vu27Koh4yciIdj0GcoJLoDXi4OIZ2F3sCfQS/f8JULL1/75FX69ZWrH7tUfzybjpxYsubJKzDoM5WiPFS/TBKEdAzX3rN5RQ8t/cO8NUEfvuDM66vXPb5Ev+zt33X7wo3P78Cgz1Qw6F3NVet/vmpeOPxH83Yy6EazC6++aD4N+u5/7qb54UtHMOgzFQx6dxMOzwpY6W3zbjLoD+ye01PYf3oWHZn6XG0MNvVt3FbAoM9UMOiIXqY68Ob1Jfdu7Vu55meX6ddL1w3Fu+5xm1VDPRj0mQoGvetZsn7owz1k9B39en7/8OHF6x+/OH69cceo3l0/f+APpbnh7hf0Z80NOt23MCjw93srDM81zmrCiXMDWr45oPwdeFqUiDwcMLHMOJpDPB3RCjUdO4Oi8JtvBfFWQMWagByIz4Jm4q69s+vmFRVlcHwu1daoFMQPDr4LbOuS9vgAeV0KJya/uWxAHpdqGShdp9bp+mXK5NHgAXmlaZUNUl4U0NKGgAj7+lspKv4SMH5bwMpxcF1c3D+8Xnv6Nmy77b2rH+pVGZq1INy+XPkneje9PG6aKZoadDEMey2iUZ9xnoWIPWBbq1QAC/wW424MpPRlNeP+A48vpaiIgvXRPFPZD8Y/AtZqpCCIvBVs6xKLPm3cdlYf6QW9LtHRa40bBvK4NMXEOWrDfRxsUysiHjYmP4oV9xlMR1Rss34JGub179x6Dimd1gG/aNPwgcvu/eUKM8iQ16CHo5eAbXxF5PTv1iKvLgJrN0Yn4m9qHzDozQs6NMwmJn9tXG6K/O+gf7qi4m/BhNowZSKPQWfyO+DwtKLi6bheFojcCtZstAr882aMdjDozQk6438Gh9mUxMBYfLFK00XKHzVjTEHegk7FN8BhWRWOLTZT44++3x6q1Swx8UUzZhgMeuODPqCOu6HPbaLR2Z+yIIj8Juhrlny+IKrIVdDlx8HPp6f/manxgwEnZFohfbLRBga98UFPqwfVoaQNIr8KepotJj5lpsCDPAW9WQoPXmimyA2TJdDfClVet1wLBr29Qdd7eDb0ugV5WiVvuiHolG83U2RnUHwM9LZSVLxlpqYaDHp7g074J81Y6oHa+4hFJ1TdIfX3x+r9U/F7qF2SXBuhKroh6FpJQJ40ItFptbDeDog4CQ73FQQGvb1Bt1HgL4LtkxSK+aZCNcVoXrxnB3lcWr2n11RwgEHX0/l90JMo/Zu92hOwoX8OAX0OMWnuH66gX94Atm2kILot6Dpktd+sJKJmDPVUtvOVD5DPKX7KOB3kNehUHgsG9841lSahYjXY1kcusmxFtXwg4gDodcmHohyr8yUpLd0SdL0XFr5SfR5HvyflJ+ILaiCY/B5YyyV9XYYPgxnmeyJ5DLq+Gs4GKd0NepJkQ9/DC7VPUhogf6Wo0F1oHw5oeXvAxDqvXbFWXOveDUFnIt2vMmfQPqieTYQfN04/0n75MMeeR0zegu46+3wGyJckG4XyLWB7l9JedcfEX+MVg4i9SnepQN8YhOMLzNBsYNCrgTw+ygpUyyUWPWWcfqQ+7BPHjNNC3oLOSmdvprehz05DXpdsMHEEbO9SHsCgVwN5kuTzpQJRkPGtoKmU9sKtQf4rsI5LTvIWdNsZyUoYfwb0umQDapukPIBBrwbyJInyDcadDhrdDNZzaeoJR55Ke2ig5SRvQfeB8R+CXpdsQG2TlAcw6NVAniQN7L/GuNPBSlvAeu2W8xZhDDrc3qa0J1WaBQa9GsiTpKzQSID12q1w77vNFAJg0OH2NlH+T+NsLzM56PftvxT0upSnoLPoIFiv3Xpw9D1mCgEw6HB7m3QHFHkgr0EnpVuN205RrqrzJanRQafipHGmh8pdYM12q/a6kyow6HB7l/JAboNevsO47VBe/wDIJDU66NPZYDN5P1iz7XL1XNT1Qc9wW2oWSPlDSd0BpSKvQafRGuO2Q/jroNelxgc9+yEYKy8Ha7pUGL+i6QoCR+8z3R701H3SKWWhtobedWTiTaUxpd8ofcW09CO3Qecjxm0H8iWp4UGXR40zPQ9lOZlYvtO420S3B13/xAK1d4mJmkfSJkD5v8A6LiXBxDjocyktRfEJsE6SXBR4+mvEtRp+jM7PPs4oC1BNl2h5n3G2iW4Pur5pAWqfJFLy67eL8jtBv0tEPGHcdgjfB3pdSsuATL8R1GIS7naJiYfB9j7KW9DjLr+Bui61la4PuoKIN0BPkhj/lqkAQ/jXQF+SfNBdAENel5is72dM/yTjuhoRquMrKt9Q83aLWsfSH2bUKm9Bv3F4FljXJcZ/Z9xuwv3Xw36pDvXkDrWn9W01X6+f7PfOt+twDLqasSOLQY+P9KWK+n72UJwX11r3p7nq2PYRtUDSX8I4qfr70SFI9BjgTRYTx9RKvi9e0ac+52tN1Xoqve1U3oKugeomKalnYio+B/qSRMUXTAULGPRJdAAgX6vlC+GfBf1ZRKNdpmo9RLS2R1yb8hj0cP9FYG0f6ROdur85/Vy0UFygtCzupQhqmyR9bXwiGHRDxmP1RorJzWZi/IBqZJE+WWgja3dJjVYeg64h5cY8jWU68gKDfpZVQ+eB3pYo8ttlrwSsk1EuoPbTFeXPgp/blNega7L2UNQIFfj7zFQkgEGvZnC09b3BZr0vOss1ADa5oLyxN3Ew8Wj8AAJomE15Dvrk89taH/YB+RkzAR5g0OvRx0xQjWZIP+BvOkA1sygJyJNFBXPmOe1Jp1wHXdPisNOye37UgUG3w6J0z+ZKKxKlezonBBm7HaydVj5AvjSi0XdNpQ4MuqEon68bVyNFxb/NmFKCQXdDDy4MdBfMUM2sIvJQMDTRY8YwfXQIoPGkkQ/66a+6I0vIn6ia33s7NeiauH/2JvxaMZ1n7Kvjpd1qRf59eollpoIdogIJei1y9f5aCSvfDfpdagS0/HX1f4+ohZj+IQ1MyoCUv2QqNQcifxr/1AKNHxQ/pf6f19S0PWIq+KGXvX5YP1izQnqPiMkbjKuaAr9patn4qDCqb9qwo9cdyGcVf9Y4m0tRbojnMTR/kqR9VDJTCWkr4d4FQfHA0mDwwMpgoHRdrEG+Mu5A0NkRQJOJzzNES1Ugr56cJnlNHFD93PlGsnb3nICNLo+PGeNLZscuD8LhWWYoUkv4+vnxmXIarYj3UuJ1Ri8bNQ9JeRHOOwRBEARBEARBEARBEARBEARBEARBEARBEARBEARBEARBEARBEKRDCIL/A3YQ7z+l4De9AAAAAElFTkSuQmCC" alt="Incture" class="logo">
+  <span class="divider"></span>
+  <span class="cust"><b class="product-name">Delivery Automation Cockpit</b>Panasonic Automotive · Plant IN10 Chakan</span>
+  <span class="proto-tag">Prototype</span>
+  <div class="shell-spacer"></div>
+  <label class="role-switch" title="View as role">
+    <span>Role</span>
+    <select id="roleSelect"></select>
+  </label>
+  <button class="tool-btn" id="toggleNotes" aria-pressed="false" title="Show annotations (N)">
+    <svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4z"/></svg><span>Notes</span>
+  </button>
+  <button class="tool-btn" id="openMatrix" title="Requirement traceability (T)">
+    <svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 10h18M9 5v14"/></svg><span>Traceability</span>
+  </button>
+  <button class="tool-btn" id="openAssumptions" title="Assumptions & open questions">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg><span>Assumptions</span>
+  </button>
+  <button class="icon-btn bell" id="bellBtn" aria-label="Notifications" title="Notifications"
+          data-note="Alerts for exceptions within the alert window before cut-off (default 3 h). Same alerts go to email / Teams per Run settings." data-req="REQ-18">
+    <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/></svg>
+    <span class="dot" id="bellDot" hidden>0</span>
+  </button>
+  <span class="avatar" id="avatar" title="Signed-in user">RD</span>
+</header>
+<div class="popover" id="bellPop" hidden></div>
+
+<nav class="screen-index" id="screenIndex" aria-label="Screen index"></nav>
+
+<main class="stage" id="stage">
+
+<!-- =========================================================== 1. OVERVIEW -->
+<section class="screen" data-screen="overview" data-title="Overview" data-group="Overview" data-req="REQ-01">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs">Home</div>
+      <h1>Delivery Automation Overview</h1>
+      <div class="muted">Plant IN10 Chakan · Wed 14 Oct 2026, 22:00 IST · shipping horizon 24 h</div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="resetDemo" title="Restore the starting data for a fresh demo">Reset demo</button>
+      <button class="btn primary" id="runNow" data-roles="planner" data-req="REQ-02"
+              data-note="Starts an on-demand run for all due lines in the horizon. Normally runs are triggered by Event Mesh (JIT call / schedule line change) and the 15-min sweep.">
+        <svg viewBox="0 0 24 24"><path d="M7 4l12 8-12 8z"/></svg>Run automation now</button>
+    </div>
+  </div>
+  <div class="strip info" id="ovStrip" data-req="REQ-02">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
+    <div class="grow" id="ovStripText"></div>
+  </div>
+  <div class="kpis" id="kpis" data-note-label="KPI tiles" data-note="Totals since 00:00 for plant IN10. Touchless rate = (full + partial deliveries created without user action) ÷ lines processed. Click a tile to drill down." data-req="REQ-01"></div>
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-head"><h2>Today's decisions</h2><span class="muted" id="todayTotal"></span></div>
+        <div id="todayBars"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Recent runs</h2><a href="#/run" class="btn sm ghost">Open run monitor</a></div>
+        <div class="table-wrap"><table class="table" id="runsTable" data-note-label="Recent runs" data-note="Each run lists its trigger (event or sweep), lines processed and outcome mix. Kept 30 days." data-req="REQ-02">
+          <thead><tr><th>Run</th><th>Trigger</th><th class="num-cell">Lines</th><th>Outcome</th><th>Duration</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-head"><h2>Demo scenarios</h2><span class="pill blue">Current batch · 10 lines</span></div>
+        <p class="muted" style="margin-top:0;font-size:.85rem" id="scenHint">Each due line below exercises one business rule. Run the automation, then open any line to see why it was decided that way.</p>
+        <ol class="scen" id="scenList"></ol>
+      </div>
+      <div class="card" data-roles="planner,manager">
+        <div class="card-head"><h2>Closest to cut-off</h2><a href="#/exceptions" class="btn sm ghost">Exception cockpit</a></div>
+        <div id="ovExc"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================== 2. RUN MONITOR -->
+<section class="screen" data-screen="run" data-title="Automation Run" data-group="Automation" data-req="REQ-02,REQ-03,REQ-04,REQ-10">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/overview">Overview</a> / Automation run</div>
+      <h1 id="runTitle">Automation Run</h1>
+      <div class="muted" id="runSub"></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="runStart" data-roles="planner">Start run</button>
+      <a class="btn" href="#/demand">Open worklist</a>
+      <a class="btn" href="#/exceptions" data-roles="planner,manager">Exception cockpit</a>
+    </div>
+  </div>
+  <div class="pflow" id="pflow" data-note-label="Process steps" data-note="The six steps of every run. Steps 2–5 run per schedule line; step 6 sends alerts and schedules re-checks. Each step is logged to the decision trail." data-req="REQ-03,REQ-04"></div>
+  <div class="card" style="padding:.8rem 1.1rem">
+    <div class="toolbar" style="margin-bottom:.4rem"><strong id="runProgText">Waiting to start</strong><span class="muted" id="runProgPct">0%</span></div>
+    <div class="progress"><i id="runBar"></i></div>
+  </div>
+  <div class="grid-2e">
+    <div class="card">
+      <div class="card-head"><h2>Run log</h2><span class="muted">Live</span></div>
+      <div class="log" id="runLog" data-note-label="Run log" data-note="Technical log kept for support. Delivery creation is idempotent: a re-run never creates a second delivery for the same schedule line (REQ-21)." data-req="REQ-21"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Decisions in this run</h2><span id="runCounts"></span></div>
+      <div class="table-wrap"><table class="table" id="runResults">
+        <thead><tr><th>Line</th><th>Customer</th><th class="num-cell">Due</th><th>Decision</th><th>Delivery</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================== 3. DEMAND WORKLIST -->
+<section class="screen" data-screen="demand" data-title="Due Demand Worklist" data-group="Automation" data-req="REQ-03">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/overview">Overview</a> / Due demand</div>
+      <h1>Due Demand Worklist</h1>
+      <div class="muted">Schedule lines and JIT calls due within the 24 h shipping horizon</div>
+    </div>
+  </div>
+  <div class="fbar" data-note-label="Filter bar" data-note="sap.ui.comp.smartfilterbar (Fiori elements List Report). Defaults: plant = user's plant, horizon = settings value." data-req="REQ-03">
+    <div><label for="dqSearch">Search</label><input id="dqSearch" type="search" placeholder="Line, SA, JIT call, material"></div>
+    <div><label for="dqCust">Customer</label><select id="dqCust"><option value="">All customers</option></select></div>
+    <div><label for="dqType">Agreement type</label><select id="dqType"><option value="">All</option><option value="LZJ">LZJ – JIT</option><option value="LZ">LZ – delivery schedule</option></select></div>
+    <div><label for="dqDec">Decision</label><select id="dqDec"><option value="">All</option><option>Awaiting run</option><option>Full</option><option>Partial</option><option>Hold</option><option>No delivery</option><option>Skip</option><option>Override</option></select></div>
+    <div class="go"><button class="btn" id="dqClear">Clear</button></div>
+  </div>
+  <div class="card">
+    <div class="toolbar"><h2 id="dqCount">Schedule lines</h2>
+      <div class="row-actions"><button class="btn sm" id="dqExport">Export to Excel</button></div></div>
+    <div class="table-wrap"><table class="table" id="dqTable" data-note-label="Schedule line table"
+      data-note="sap.m.Table (growing, 50 rows). Source: scheduling agreement schedule lines (LZ) and JIT call items (LZJ) from S/4HANA, joined with the rule decision. Click a row for the decision detail." data-req="REQ-03,REQ-04">
+      <thead><tr><th>Schedule line</th><th>Customer / ship-to</th><th>Material</th><th>Due</th><th class="num-cell">Due qty</th><th class="num-cell">Available</th><th class="num-cell">Fill</th><th>Decision</th><th>Delivery</th></tr></thead>
+      <tbody></tbody></table></div>
+    <div class="empty" id="dqEmpty" hidden>No schedule lines match your filters.</div>
+  </div>
+</section>
+
+<!-- =========================================================== 4. LINE DETAIL (object page) -->
+<section class="screen" data-screen="line" data-title="Schedule Line Decision" data-group="Automation" data-req="REQ-14,REQ-12,REQ-13">
+  <div class="ohead">
+    <div class="crumbs muted" style="font-size:.8rem"><a href="#/demand">Due demand</a> / <span id="lnCrumb"></span></div>
+    <div class="top">
+      <div>
+        <h1 id="lnTitle">—</h1>
+        <div class="muted" id="lnSub"></div>
+      </div>
+      <div class="actions" style="display:flex;gap:.5rem;flex-wrap:wrap" id="lnActions"></div>
+    </div>
+    <div class="facts" id="lnFacts"></div>
+    <nav class="anchor">
+      <a href="javascript:void(0)" data-anchor="secDemand">Demand</a>
+      <a href="javascript:void(0)" data-anchor="secAvail">Availability</a>
+      <a href="javascript:void(0)" data-anchor="secRule">Rule evaluation</a>
+      <a href="javascript:void(0)" data-anchor="secOutcome">Outcome</a>
+      <a href="javascript:void(0)" data-anchor="secTrail">Decision trail</a>
+    </nav>
+  </div>
+  <div id="lnStrip" style="margin-top:1rem"></div>
+  <div class="osec card" id="secDemand"><h2>Demand</h2><div class="form-grid" id="lnDemand"></div></div>
+  <div class="osec card" id="secAvail" data-note-label="Availability" data-note="Stock per plant / storage location from S/4HANA (unrestricted, quality inspection, blocked). Available for this line = unrestricted − quantity already allocated to earlier-due demand. QI and blocked stock are never used." data-req="REQ-04,REQ-20">
+    <h2>Availability</h2><div id="lnAvail"></div></div>
+  <div class="osec card" id="secRule" data-note-label="Rule evaluation" data-note="Checks run in a fixed order: blocks → master data → JIT sequence → quantity vs tolerance → partials allowed → minimum fill. The first failing check decides the outcome. Rule version is stored with the decision." data-req="REQ-05,REQ-06,REQ-07,REQ-08,REQ-09">
+    <h2>Rule evaluation</h2><div id="lnRule"></div></div>
+  <div class="osec card" id="secOutcome"><h2>Outcome</h2><div id="lnOutcome"></div></div>
+  <div class="osec card" id="secTrail" data-note-label="Decision trail" data-note="Immutable trail: system steps and user actions with timestamp and user. Retained 7 years with the delivery." data-req="REQ-14,REQ-19">
+    <h2>Decision trail</h2><ul class="tl" id="lnTrail"></ul></div>
+</section>
+
+<!-- =========================================================== 5. EXCEPTIONS -->
+<section class="screen" data-screen="exceptions" data-title="Exception Cockpit" data-group="Exceptions" data-req="REQ-11" data-roles="planner,manager">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/overview">Overview</a> / Exceptions</div>
+      <h1>Exception Cockpit</h1>
+      <div class="muted">Only lines the automation could not deliver. Everything else was handled without you.</div>
+    </div>
+    <div class="actions"><button class="btn" id="excRecheck" data-roles="planner" data-req="REQ-13"
+      data-note="Re-runs availability and rules for all open exceptions now. The same happens automatically after every goods receipt for the material.">Re-check all</button></div>
+  </div>
+  <div class="itabs" id="excTabs" data-note-label="Reason tabs" data-note="sap.m.IconTabBar with counts per exception reason." data-req="REQ-11"></div>
+  <div class="card">
+    <div class="table-wrap"><table class="table" id="excTable" data-note-label="Exception table"
+      data-note="Sorted by time left to cut-off (due time − customer cut-off lead time). Red < 2 h, amber < 4 h. Escalation goes to the desk named in the customer rule." data-req="REQ-11,REQ-18">
+      <thead><tr><th>Schedule line</th><th>Customer</th><th>Material</th><th>Reason</th><th class="num-cell">Due / available</th><th>Cut-off in</th><th>Escalated to</th><th></th></tr></thead>
+      <tbody></tbody></table></div>
+    <div class="center-state" id="excEmpty" hidden>
+      <div class="state-icon success"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></div>
+      <h2 id="excEmptyTitle">No open exceptions</h2>
+      <p class="muted" id="excEmptyText">Every due line was delivered automatically.</p>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================== 6. DELIVERIES -->
+<section class="screen" data-screen="deliveries" data-title="Outbound Deliveries" data-group="Deliveries" data-req="REQ-10">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/overview">Overview</a> / Deliveries</div>
+      <h1>Outbound Deliveries</h1>
+      <div class="muted">Created by the automation or by planner override, today</div>
+    </div>
+  </div>
+  <div class="fbar">
+    <div><label for="dlSearch">Search</label><input id="dlSearch" type="search" placeholder="Delivery, SA, material"></div>
+    <div><label for="dlType">Type</label><select id="dlType"><option value="">All</option><option>Full</option><option>Partial</option><option>Override – partial</option></select></div>
+    <div><label for="dlBy">Created by</label><select id="dlBy"><option value="">Anyone</option><option>Automation</option><option>Planner</option></select></div>
+  </div>
+  <div class="card">
+    <div class="toolbar"><h2 id="dlCount">Deliveries</h2></div>
+    <div class="table-wrap"><table class="table" id="dlTable" data-note-label="Delivery table"
+      data-note="Outbound deliveries (LF) created with reference to the scheduling agreement via the outbound delivery API. Picking status read back from S/4HANA." data-req="REQ-10,REQ-22">
+      <thead><tr><th>Delivery</th><th>Customer</th><th>Scheduling agreement</th><th>Material</th><th class="num-cell">Qty</th><th>Type</th><th>Route / shipping pt</th><th>Created</th><th>Picking</th></tr></thead>
+      <tbody></tbody></table></div>
+    <div class="empty" id="dlEmpty" hidden>No deliveries match your filters.</div>
+  </div>
+</section>
+
+<!-- =========================================================== 7. DELIVERY DETAIL -->
+<section class="screen" data-screen="delivery" data-title="Delivery Detail" data-group="Deliveries" data-req="REQ-10">
+  <div class="ohead">
+    <div class="crumbs muted" style="font-size:.8rem"><a href="#/deliveries">Outbound deliveries</a> / <span id="dvCrumb"></span></div>
+    <div class="top"><div><h1 id="dvTitle">—</h1><div class="muted" id="dvSub"></div></div>
+      <div class="actions" style="display:flex;gap:.5rem"><button class="btn" id="dvOpenS4" data-note="Opens the delivery in S/4HANA (VL03N / Manage Outbound Deliveries app) via cross-app navigation." data-req="REQ-22">Open in S/4HANA</button></div></div>
+    <div class="facts" id="dvFacts"></div>
+  </div>
+  <div class="grid-2e" style="margin-top:1rem">
+    <div class="card"><h2>Reference</h2><dl class="kv" id="dvRef"></dl></div>
+    <div class="card"><h2>Shipping</h2><dl class="kv" id="dvShip" data-note-label="Shipping" data-note="Route and shipping point determined in S/4HANA; deliveries are split by route, date and shipping point (REQ-10)." data-req="REQ-10"></dl></div>
+  </div>
+  <div class="card"><h2>Items</h2>
+    <table class="table" id="dvItems"><thead><tr><th>Item</th><th>Material</th><th class="num-cell">Delivery qty</th><th>Storage loc.</th><th>Reference</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<!-- =========================================================== 8. RULES -->
+<section class="screen" data-screen="rules" data-title="Customer Agreement Rules" data-group="Rules & Settings" data-req="REQ-15" data-roles="keyuser,manager">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/overview">Overview</a> / Rules</div>
+      <h1>Customer Agreement Rules</h1>
+      <div class="muted">How each customer's demand is delivered when stock is short. Changes are versioned and simulated before activation.</div>
+    </div>
+  </div>
+  <div class="strip info" data-roles="manager"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg><div class="grow">Read-only view. Rules are maintained by key users.</div></div>
+  <div class="card">
+    <div class="table-wrap"><table class="table" id="ruleTable" data-note-label="Rule table"
+      data-note="Decision table stored on BTP (SAP Build Process Automation decision). One active and at most one draft version per customer. Defaults seeded from the customer master partial-delivery indicator and the agreement's under-delivery tolerance." data-req="REQ-15">
+      <thead><tr><th>Customer</th><th>Partials</th><th class="num-cell">Min fill</th><th class="num-cell">Under-tol.</th><th>JIT sequence</th><th>Consolidation</th><th class="num-cell">Cut-off</th><th>Version</th><th>Status</th><th></th></tr></thead>
+      <tbody></tbody></table></div>
+  </div>
+</section>
+
+<!-- =========================================================== 9. RULE EDIT -->
+<section class="screen" data-screen="rule-edit" data-title="Edit Rule" data-group="Rules & Settings" data-req="REQ-15" data-roles="keyuser">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/rules">Rules</a> / <span id="reCrumb"></span></div>
+      <h1 id="reTitle">Edit rule</h1>
+      <div class="muted" id="reSub"></div>
+    </div>
+  </div>
+  <form class="card form wide" id="ruleForm" novalidate>
+    <div class="form-cols">
+      <fieldset class="grp"><legend>Shortfall handling</legend>
+        <div class="field"><label class="switch"><input type="checkbox" name="partials" id="rPartials"
+          data-note="If off, any shortfall beyond tolerance becomes a HOLD (REQ-07). Seeded from customer master 'partial delivery' indicator." data-req="REQ-06,REQ-07"> Partial deliveries allowed</label></div>
+        <div class="field"><label for="rMin">Minimum fill for a partial (%) <span class="req">*</span></label>
+          <input id="rMin" name="minFill" type="number" min="1" max="100" required
+            data-note="Required, 1–100. Only applies when partials are allowed. Below this the line is held." data-req="REQ-06,REQ-07"><div class="error"></div></div>
+        <div class="field"><label for="rTol">Under-delivery tolerance (%) <span class="req">*</span></label>
+          <input id="rTol" name="tolUnder" type="number" min="0" max="10" step="0.5" required
+            data-note="0–10 %. A shortfall within tolerance ships as FULL and closes the schedule line. Must not exceed the tolerance on the scheduling agreement." data-req="REQ-05"><div class="error"></div><div class="hint">Shortfalls within this % are delivered as full.</div></div>
+        <div class="field"><label class="switch"><input type="checkbox" name="seqComplete" id="rSeq"
+          data-note="JIT (LZJ) only. If on, a call ships only when every sequence position is available." data-req="REQ-08"> JIT sequence must ship complete</label></div>
+      </fieldset>
+      <fieldset class="grp"><legend>Timing &amp; escalation</legend>
+        <div class="field"><label for="rCons">Consolidation</label>
+          <select id="rCons" name="consolidation"><option>Per JIT call</option><option>Per day</option><option>Per order</option><option>Per route</option></select></div>
+        <div class="field"><label for="rCut">Cut-off lead time (hours before due) <span class="req">*</span></label>
+          <input id="rCut" name="cutoffHrs" type="number" min="1" max="48" required
+            data-note="1–48 h. Exceptions must be resolved before due time − cut-off; alerts start earlier per Run settings." data-req="REQ-07,REQ-18"><div class="error"></div></div>
+        <div class="field"><label for="rEsc">Escalate to <span class="req">*</span></label>
+          <select id="rEsc" name="escalate" required><option value="">Select…</option><option>JIT desk – Bidadi</option><option>OEM desk – Chakan</option><option>Tier-1 desk – Chakan</option><option>Export desk – Chakan</option><option>Aftermarket desk</option></select><div class="error"></div></div>
+        <div class="field"><label for="rEff">Effective from <span class="req">*</span></label>
+          <input id="rEff" name="effective" type="date" required data-note="Must be today or later. The active version stays in force until then." data-req="REQ-15"><div class="error"></div></div>
+        <div class="field"><label for="rWhy">Reason for change <span class="req">*</span></label>
+          <textarea id="rWhy" name="why" rows="2" required maxlength="200" data-note="Required, 10–200 chars. Stored in the audit log." data-req="REQ-19"></textarea><div class="error"></div></div>
+      </fieldset>
+    </div>
+  </form>
+  <div class="footer-bar">
+    <a class="btn" href="#/rules">Cancel</a>
+    <button class="btn" id="reSave">Save draft</button>
+    <button class="btn primary" id="reSim" data-req="REQ-16" data-note="Saves the draft and runs it against the last 7 days of demand plus the current batch.">Save &amp; simulate</button>
+  </div>
+</section>
+
+<!-- =========================================================== 10. RULE SIMULATION -->
+<section class="screen" data-screen="rule-sim" data-title="Simulate Rule Change" data-group="Rules & Settings" data-req="REQ-16" data-roles="keyuser">
+  <div class="dyn-head">
+    <div>
+      <div class="crumbs"><a href="#/rules">Rules</a> / Simulation</div>
+      <h1 id="rsTitle">Simulation</h1>
+      <div class="muted" id="rsSub"></div>
+    </div>
+    <div class="actions"><button class="btn" id="rsBack">Back to edit</button><button class="btn primary" id="rsActivate">Activate version</button></div>
+  </div>
+  <div class="kpis" id="rsKpis"></div>
+  <div class="grid-2e">
+    <div class="card"><h2>What changes</h2><div class="table-wrap"><table class="table" id="rsDiff"><thead><tr><th>Setting</th><th>Active</th><th>Draft</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card"><h2>Outcome mix (7 days + current batch)</h2><div id="rsBars"></div></div>
+  </div>
+  <div class="card"><div class="toolbar"><h2>Lines whose decision would change</h2><span class="muted" id="rsChCount"></span></div>
+    <div class="table-wrap"><table class="table" id="rsTable" data-note-label="Changed decisions" data-note="Simulation replays stored stock snapshots; it does not create deliveries." data-req="REQ-16">
+      <thead><tr><th>Schedule line</th><th>Due date</th><th class="num-cell">Due / available</th><th class="num-cell">Fill</th><th>Active rule</th><th>Draft rule</th></tr></thead><tbody></tbody></table></div>
+    <div class="empty" id="rsEmpty" hidden>No decision changes – the draft behaves like the active version on recent demand.</div></div>
+</section>
+
+<!-- =========================================================== 11. SETTINGS -->
+<section class="screen" data-screen="settings" data-title="Run Settings" data-group="Rules & Settings" data-req="REQ-02,REQ-18" data-roles="keyuser">
+  <div class="dyn-head"><div><div class="crumbs"><a href="#/overview">Overview</a> / Settings</div><h1>Run Settings</h1><div class="muted">Triggers, horizon, retries and alerts for plant IN10</div></div></div>
+  <form class="card form wide" id="setForm" novalidate>
+    <div class="form-cols">
+      <fieldset class="grp"><legend>Triggers</legend>
+        <div class="field"><label class="switch"><input type="checkbox" name="event" id="sEvent" data-note="Subscribes to S/4HANA business events (scheduling agreement changed, JIT call created) via SAP Event Mesh." data-req="REQ-02,REQ-22"> Run on new / changed JIT calls and schedule lines</label></div>
+        <div class="field"><label for="sSweep">Periodic sweep</label><select id="sSweep" name="sweep" data-note="SAP Job Scheduling service. Catches anything an event missed." data-req="REQ-02"><option value="5">Every 5 min</option><option value="10">Every 10 min</option><option value="15">Every 15 min</option><option value="30">Every 30 min</option><option value="60">Every 60 min</option></select></div>
+        <div class="field"><label for="sHor">Shipping horizon (hours) <span class="req">*</span></label><input id="sHor" name="horizon" type="number" min="4" max="72" required data-note="4–72 h. Lines due beyond the horizon are not processed yet." data-req="REQ-03"><div class="error"></div></div>
+        <div class="field"><label for="sRet">Delivery creation retries <span class="req">*</span></label><input id="sRet" name="retries" type="number" min="0" max="5" required><div class="error"></div><div class="hint">Retries on S/4HANA lock or timeout. Idempotent – no duplicates.</div></div>
+      </fieldset>
+      <fieldset class="grp"><legend>Alerts &amp; re-checks</legend>
+        <div class="field"><label for="sAlert">Alert planners this many hours before cut-off <span class="req">*</span></label><input id="sAlert" name="alertHrs" type="number" min="1" max="12" required data-req="REQ-18"><div class="error"></div></div>
+        <div class="field"><label class="switch"><input type="checkbox" name="inapp" id="sInapp"> In-app notification</label></div>
+        <div class="field"><label class="switch"><input type="checkbox" name="email" id="sEmail"> Email to escalation desk</label></div>
+        <div class="field"><label class="switch"><input type="checkbox" name="teams" id="sTeams" data-note="Posts to the escalation desk's Microsoft Teams channel (adaptive card with Open / Release buttons)." data-req="REQ-18"> Microsoft Teams message</label></div>
+        <div class="field"><label class="switch"><input type="checkbox" name="gr" id="sGr" data-note="Goods receipt event for a material re-checks every held line for that material immediately." data-req="REQ-13"> Re-check held lines on goods receipt</label></div>
+      </fieldset>
+    </div>
+    <div class="form-actions"><button class="btn primary" type="submit">Save settings</button></div>
+  </form>
+</section>
+
+<!-- =========================================================== 12. ANALYTICS -->
+<section class="screen" data-screen="analytics" data-title="KPIs & Trends" data-group="Insights" data-req="REQ-17" data-roles="manager">
+  <div class="dyn-head"><div><div class="crumbs"><a href="#/overview">Overview</a> / Insights</div><h1>KPIs &amp; Trends</h1><div class="muted">Plant IN10 Chakan · since go-live of automation (W36)</div></div></div>
+  <div class="kpis" id="anKpis"></div>
+  <div class="grid-2e">
+    <div class="card chart"><div class="card-head"><h2>Touchless rate by week</h2><span class="muted">target 90%</span></div><div id="anTrend" data-note-label="Trend" data-note="Weekly touchless rate. W34–W35 were the manual baseline. Data from the decision log on BTP." data-req="REQ-17"></div></div>
+    <div class="card"><div class="card-head"><h2>Exceptions by reason · today</h2></div><div id="anReasons"></div></div>
+  </div>
+  <div class="card"><div class="card-head"><h2>By customer · today</h2></div>
+    <div class="table-wrap"><table class="table" id="anCust"><thead><tr><th>Customer</th><th class="num-cell">Lines</th><th class="num-cell">Touchless</th><th class="num-cell">Exceptions</th><th class="num-cell">Overrides</th><th>Rule</th></tr></thead><tbody></tbody></table></div></div>
+</section>
+
+<!-- =========================================================== 13. AUDIT -->
+<section class="screen" data-screen="audit" data-title="Audit Log" data-group="Insights" data-req="REQ-19" data-roles="manager,keyuser">
+  <div class="dyn-head"><div><div class="crumbs"><a href="#/overview">Overview</a> / Audit</div><h1>Audit Log</h1><div class="muted">Every override, rule change and settings change, with who and why</div></div></div>
+  <div class="fbar">
+    <div><label for="auSearch">Search</label><input id="auSearch" type="search" placeholder="Object, user, text"></div>
+    <div><label for="auType">Type</label><select id="auType"><option value="">All</option><option>Override</option><option>Rule change</option><option>Settings</option><option>Integration</option><option>Re-check</option></select></div>
+  </div>
+  <div class="card"><div class="table-wrap"><table class="table" id="auTable" data-note-label="Audit table" data-note="Append-only. Exportable for internal audit. Retention 7 years." data-req="REQ-19">
+    <thead><tr><th>When</th><th>User</th><th>Type</th><th>Object</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
+    <div class="empty" id="auEmpty" hidden>No entries match.</div></div>
+</section>
+
+</main>
+
+<!-- ============ OVERLAYS (keep) ============ -->
+<aside class="side-panel" id="notesPanel" hidden>
+  <div class="panel-head"><h2>Annotations</h2><button class="icon-btn" data-close="notesPanel" aria-label="Close">×</button></div>
+  <ol class="notes-list" id="notesList"></ol>
+</aside>
+<div class="overlay" id="matrixOverlay" hidden>
+  <div class="dialog wide">
+    <div class="panel-head"><h2>Requirement Traceability</h2><button class="icon-btn" data-close="matrixOverlay" aria-label="Close">×</button></div>
+    <div class="dialog-body" id="matrixBody"></div>
+  </div>
+</div>
+<div class="overlay" id="assumptionsOverlay" hidden>
+  <div class="dialog">
+    <div class="panel-head"><h2>Assumptions &amp; Open Questions</h2><button class="icon-btn" data-close="assumptionsOverlay" aria-label="Close">×</button></div>
+    <div class="dialog-body" id="assumptionsBody"></div>
+  </div>
+</div>
+<div class="overlay" id="modalOverlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true">
+    <div class="panel-head"><h2 id="modalTitle"></h2></div>
+    <div class="dialog-body" id="modalBody"></div>
+    <div class="dialog-actions" id="modalActions"></div>
+  </div>
+</div>
+<div class="toast-host" id="toastHost"></div>
+
+<script>
+/* js/data.js */
+/* ===== Prototype data: Panasonic Automotive – Delivery Automation Cockpit =====
+   Requirement IDs REQ-xx were assigned by us (the source brief had none).
+   All data is mock and lives in memory only. */
+window.PROTO = {
+  project: "Delivery Automation Cockpit",
+  source: "Panasonic Automotive brief (delivery order creation from scheduling agreements / JIT) + Incture approach deck, Oct 2026. IDs assigned by Incture.",
+  device: "web",
+
+  requirements: [
+    { id: "REQ-01", title: "Overview of today's automation: lines processed, touchless rate, deliveries created, open exceptions, next run" },
+    { id: "REQ-02", title: "Automation triggers on new/changed JIT calls and schedule lines (event) plus a periodic sweep; planner can start a run on demand" },
+    { id: "REQ-03", title: "Worklist of due schedule lines within the shipping horizon, grouped by customer, ship-to, unloading point and JIT sequence" },
+    { id: "REQ-04", title: "Availability check: unrestricted stock and ATP per plant / storage location for each due line" },
+    { id: "REQ-05", title: "Create a FULL delivery when the due quantity is available (incl. within under-delivery tolerance)" },
+    { id: "REQ-06", title: "Create a PARTIAL delivery when partials are allowed and fill ≥ customer minimum %; remainder stays open on the schedule line" },
+    { id: "REQ-07", title: "HOLD when fill is below minimum or partials are not allowed; re-check next run and escalate before cut-off" },
+    { id: "REQ-08", title: "JIT sequence calls ship complete only; any gap in the sequence means no delivery (configurable)" },
+    { id: "REQ-09", title: "SKIP lines with delivery/credit blocks or missing master data, with the reason" },
+    { id: "REQ-10", title: "Outbound delivery is created with reference to the scheduling agreement, split by route, date and shipping point" },
+    { id: "REQ-11", title: "Exception cockpit: all held/blocked lines with reason and time left to cut-off" },
+    { id: "REQ-12", title: "Planner can override (release partial, keep on hold, close) with a mandatory reason code and comment" },
+    { id: "REQ-13", title: "Held lines are re-checked automatically when stock arrives (goods receipt) and can be re-checked on demand" },
+    { id: "REQ-14", title: "Full decision trail per schedule line: stock snapshot, rule version, checks, outcome, user actions" },
+    { id: "REQ-15", title: "Key users maintain customer agreement rules (partials, min fill, tolerance, sequence, consolidation, cut-off) with versions" },
+    { id: "REQ-16", title: "Rule changes are simulated against recent demand before activation" },
+    { id: "REQ-17", title: "Managers see KPIs and trends (touchless rate, exceptions by reason, on-time)" },
+    { id: "REQ-18", title: "Planners are alerted to exceptions approaching cut-off (in-app, email, Teams)" },
+    { id: "REQ-19", title: "Audit log of overrides, rule changes and settings changes" },
+    { id: "REQ-20", title: "Allocation across competing demand for the same material follows due date, then customer priority" },
+    { id: "REQ-21", title: "Deliveries are created idempotently with automatic retries; no duplicates on re-run", ui: false },
+    { id: "REQ-22", title: "Integration with S/4HANA via standard APIs (outbound delivery OData / BAPI, stock, scheduling agreement), events via Event Mesh", ui: false },
+  ],
+
+  roles: [
+    { id: "planner", label: "Logistics planner – Rahul Deshmukh" },
+    { id: "keyuser", label: "Key user – Priya Nair" },
+    { id: "manager", label: "Logistics manager – Sanjay Mehta" },
+  ],
+
+  assumptions: [
+    { type: "Assumption", text: "Customer, material, plant and document numbers are illustrative; real masters come from S/4HANA during build." },
+    { type: "Assumption", text: "Demo clock is fixed at Wed 14 Oct 2026, 22:00 IST; due times and cut-off countdowns are calculated from it." },
+    { type: "Assumption", text: "Rules are maintained per customer (sold-to); ship-to level overrides are possible in build but not shown." },
+    { type: "Assumption", text: "Within-tolerance shortfalls are delivered as FULL (closing the schedule line) per under-delivery tolerance on the agreement." },
+    { type: "Assumption", text: "Allocation order when stock is short: earliest due time first, then customer priority (A before B)." },
+    { type: "Assumption", text: "Deliveries are consolidated per the customer's consolidation rule; the prototype shows one delivery per schedule line for clarity." },
+    { type: "Question", text: "Should a JIT sequence with a gap ever be released partially, and who approves it on the customer side?" },
+    { type: "Question", text: "Who may override a HOLD on a customer that does not allow partials: planner alone, or planner + sales approval?" },
+    { type: "Question", text: "Which channels should alerts use (email, Microsoft Teams, both), and how long before cut-off?" },
+    { type: "Question", text: "Is the 15-minute sweep sufficient, or are some customers' JIT windows shorter?" },
+  ],
+
+  now: "2026-10-14T22:00",
+
+  db: {
+    customers: {
+      "C-100231": { name: "Hanshin Motors Ltd.", type: "OEM · JIT", prio: "A" },
+      "C-100457": { name: "Kaveri Auto Ltd.", type: "OEM", prio: "A" },
+      "C-100612": { name: "Deccan Seating Systems Pvt. Ltd.", type: "Tier-1", prio: "B" },
+      "C-200118": { name: "Nordwerk Fahrzeugbau GmbH", type: "OEM · Export", prio: "B" },
+      "C-300045": { name: "AutoCare Aftermarket Distribution", type: "Aftermarket", prio: "C" },
+    },
+
+    rules: [
+      { id: "R-100231", cust: "C-100231", partials: false, minFill: 100, tolUnder: 0, seqComplete: true,  consolidation: "Per JIT call", cutoffHrs: 4,  escalate: "JIT desk – Bidadi", version: 3, status: "Active", effective: "2026-07-01", changedBy: "Priya Nair", changedOn: "2026-06-24" },
+      { id: "R-100457", cust: "C-100457", partials: true,  minFill: 80,  tolUnder: 2, seqComplete: false, consolidation: "Per day",      cutoffHrs: 6,  escalate: "OEM desk – Chakan",  version: 5, status: "Active", effective: "2026-10-12", changedBy: "Priya Nair", changedOn: "2026-10-12" },
+      { id: "R-100612", cust: "C-100612", partials: false, minFill: 100, tolUnder: 5, seqComplete: false, consolidation: "Per order",    cutoffHrs: 6,  escalate: "Tier-1 desk – Chakan", version: 2, status: "Active", effective: "2026-03-15", changedBy: "Priya Nair", changedOn: "2026-03-10" },
+      { id: "R-200118", cust: "C-200118", partials: true,  minFill: 60,  tolUnder: 0, seqComplete: false, consolidation: "Per route",    cutoffHrs: 12, escalate: "Export desk – Chakan", version: 1, status: "Active", effective: "2026-01-05", changedBy: "Priya Nair", changedOn: "2026-01-02" },
+      { id: "R-300045", cust: "C-300045", partials: true,  minFill: 50,  tolUnder: 0, seqComplete: false, consolidation: "Per route",    cutoffHrs: 8,  escalate: "Aftermarket desk",    version: 4, status: "Active", effective: "2026-08-01", changedBy: "Priya Nair", changedOn: "2026-07-28" },
+    ],
+
+    /* Current batch: due schedule lines awaiting the next automation run.
+       stock: unrestricted, qi (quality inspection), blocked, alloc (already allocated to earlier-due demand) */
+    lines: [
+      { id: "SL-24001", scen: "Full delivery – JIT sequence complete", sa: "5500018231", saType: "LZJ", item: "10", jit: "JC-26-104512", seq: "001–040", cust: "C-100231", shipTo: "Hanshin Bidadi Plant – Gate 3", unload: "Line-side dock A-12", plant: "IN10 Chakan", sloc: "FG01", mat: "HU-8820", matDesc: "Infotainment head unit 8\"", due: "2026-10-15T04:00", qty: 40, stock: { unr: 210, qi: 12, blocked: 0, alloc: 146 }, route: "R-PNQ-BLR-01", shipPt: "IN11", flags: {} },
+      { id: "SL-24002", scen: "No delivery – gap in JIT sequence", sa: "5500018231", saType: "LZJ", item: "20", jit: "JC-26-104513", seq: "041–080", cust: "C-100231", shipTo: "Hanshin Bidadi Plant – Gate 3", unload: "Line-side dock A-14", plant: "IN10 Chakan", sloc: "FG01", mat: "DSP-123", matDesc: "Cockpit display 12.3\" (variant mix)", due: "2026-10-15T05:00", qty: 40, stock: { unr: 75, qi: 6, blocked: 0, alloc: 36 }, route: "R-PNQ-BLR-01", shipPt: "IN11", flags: { seqGap: "Sequence 063 – DSP-123-BLK (black bezel) not in stock" } },
+      { id: "SL-24003", scen: "Partial delivery – fill above customer minimum", sa: "5500020117", saType: "LZ", item: "20", jit: "", seq: "", cust: "C-100457", shipTo: "Kaveri Auto – Pune Assembly", unload: "Receiving bay 4", plant: "IN10 Chakan", sloc: "FG02", mat: "TCU-4G-210", matDesc: "Telematics control unit 4G", due: "2026-10-15T06:00", qty: 200, stock: { unr: 480, qi: 40, blocked: 0, alloc: 310 }, route: "R-PNQ-LOC-02", shipPt: "IN12", flags: {}, competing: "Earlier-due demand for Kaveri (SL-23988, 06:00 ETA) and Hanshin (SL-23991) already allocated 310 pcs." },
+      { id: "SL-24004", scen: "Hold – fill below customer minimum (then goods receipt)", sa: "5500020117", saType: "LZ", item: "30", jit: "", seq: "", cust: "C-100457", shipTo: "Kaveri Auto – Pune Assembly", unload: "Receiving bay 4", plant: "IN10 Chakan", sloc: "FG02", mat: "CAM-ADAS-3", matDesc: "Front camera module ADAS", due: "2026-10-15T08:00", qty: 300, stock: { unr: 150, qi: 90, blocked: 0, alloc: 0 }, route: "R-PNQ-LOC-02", shipPt: "IN12", flags: {} },
+      { id: "SL-24005", scen: "Hold – customer does not accept partials (override)", sa: "5500021450", saType: "LZ", item: "10", jit: "", seq: "", cust: "C-100612", shipTo: "Deccan Seating – Hosur", unload: "Dock 2", plant: "IN10 Chakan", sloc: "FG01", mat: "ECU-SEAT-7", matDesc: "Seat control ECU", due: "2026-10-15T05:30", qty: 500, stock: { unr: 440, qi: 0, blocked: 25, alloc: 0 }, route: "R-PNQ-HSR-03", shipPt: "IN11", flags: {} },
+      { id: "SL-24006", scen: "Full delivery – shortfall within tolerance", sa: "5500021450", saType: "LZ", item: "20", jit: "", seq: "", cust: "C-100612", shipTo: "Deccan Seating – Hosur", unload: "Dock 2", plant: "IN10 Chakan", sloc: "FG03", mat: "HRN-12", matDesc: "Wiring harness connector kit", due: "2026-10-15T07:00", qty: 200, stock: { unr: 192, qi: 0, blocked: 0, alloc: 0 }, route: "R-PNQ-HSR-03", shipPt: "IN11", flags: {} },
+      { id: "SL-24007", scen: "Skip – customer on credit block", sa: "5500016602", saType: "LZ", item: "10", jit: "", seq: "", cust: "C-200118", shipTo: "Nordwerk – Nhava Sheva export hub", unload: "Container yard 7", plant: "IN10 Chakan", sloc: "FG01", mat: "HU-8820", matDesc: "Infotainment head unit 8\"", due: "2026-10-15T14:00", qty: 120, stock: { unr: 210, qi: 12, blocked: 0, alloc: 40 }, route: "R-PNQ-JNP-05", shipPt: "IN13", flags: { credit: "Credit limit exceeded (credit segment 1000) – order blocked in S/4HANA" } },
+      { id: "SL-24008", scen: "Skip – missing master data (route for new ship-to)", sa: "5500022019", saType: "LZ", item: "10", jit: "", seq: "", cust: "C-300045", shipTo: "AutoCare – Hubballi DC (new)", unload: "Main gate", plant: "IN10 Chakan", sloc: "FG02", mat: "TCU-4G-210", matDesc: "Telematics control unit 4G", due: "2026-10-15T10:00", qty: 60, stock: { unr: 480, qi: 40, blocked: 0, alloc: 370 }, route: "", shipPt: "IN12", flags: { noRoute: "No route determined for ship-to 3000451-04 (transport zone missing)" } },
+      { id: "SL-24009", scen: "Full delivery – standard", sa: "5500018240", saType: "LZ", item: "10", jit: "", seq: "", cust: "C-100231", shipTo: "Hanshin Bidadi Plant – Gate 1", unload: "Central warehouse", plant: "IN10 Chakan", sloc: "FG01", mat: "BMS-EV-48", matDesc: "EV battery management unit 48V", due: "2026-10-15T09:00", qty: 150, stock: { unr: 320, qi: 0, blocked: 0, alloc: 20 }, route: "R-PNQ-BLR-01", shipPt: "IN11", flags: {} },
+      { id: "SL-24010", scen: "Partial delivery – aftermarket, low minimum", sa: "5500022011", saType: "LZ", item: "10", jit: "", seq: "", cust: "C-300045", shipTo: "AutoCare – Pune Central DC", unload: "Bay 9", plant: "IN10 Chakan", sloc: "FG01", mat: "HU-8820", matDesc: "Infotainment head unit 8\"", due: "2026-10-15T11:00", qty: 90, stock: { unr: 210, qi: 12, blocked: 0, alloc: 150 }, route: "R-PNQ-LOC-02", shipPt: "IN11", flags: {} },
+    ],
+
+    deliveries: [
+      { id: "80045101", line: "SL-23961", cust: "C-100231", sa: "5500018231", mat: "HU-8820", qty: 40, type: "Full", route: "R-PNQ-BLR-01", shipPt: "IN11", created: "2026-10-14T21:45", by: "Automation", pick: "Picking in progress" },
+      { id: "80045102", line: "SL-23966", cust: "C-100457", sa: "5500020117", mat: "TCU-4G-210", qty: 160, type: "Partial", route: "R-PNQ-LOC-02", shipPt: "IN12", created: "2026-10-14T21:30", by: "Automation", pick: "Picked" },
+      { id: "80045103", line: "SL-23970", cust: "C-100612", sa: "5500021450", mat: "HRN-12", qty: 300, type: "Full", route: "R-PNQ-HSR-03", shipPt: "IN11", created: "2026-10-14T21:30", by: "Automation", pick: "Goods issued" },
+      { id: "80045104", line: "SL-23975", cust: "C-300045", sa: "5500022011", mat: "BMS-EV-48", qty: 25, type: "Partial", route: "R-PNQ-LOC-02", shipPt: "IN11", created: "2026-10-14T21:15", by: "Automation", pick: "Picked" },
+      { id: "80045105", line: "SL-23940", cust: "C-100612", sa: "5500021450", mat: "ECU-SEAT-7", qty: 380, type: "Override – partial", route: "R-PNQ-HSR-03", shipPt: "IN11", created: "2026-10-13T18:05", by: "Rahul Deshmukh", pick: "Goods issued" },
+      { id: "80045106", line: "SL-23977", cust: "C-200118", sa: "5500016602", mat: "BMS-EV-48", qty: 60, type: "Full", route: "R-PNQ-JNP-05", shipPt: "IN13", created: "2026-10-14T21:09", by: "Automation", pick: "Picking in progress" },
+    ],
+
+    runs: [
+      { id: "RUN-20261014-2145", trigger: "Event · JIT call JC-26-104498 created", time: "21:45", lines: 6, full: 5, partial: 0, hold: 1, nodel: 0, skip: 0, dur: "21 s", status: "Completed" },
+      { id: "RUN-20261014-2130", trigger: "Sweep · every 15 min", time: "21:30", lines: 42, full: 33, partial: 5, hold: 2, nodel: 0, skip: 2, dur: "1 m 12 s", status: "Completed" },
+      { id: "RUN-20261014-2115", trigger: "Sweep · every 15 min", time: "21:15", lines: 38, full: 31, partial: 4, hold: 2, nodel: 1, skip: 0, dur: "1 m 04 s", status: "Completed" },
+      { id: "RUN-20261014-2109", trigger: "Event · schedule line changed (SA 5500016602)", time: "21:09", lines: 3, full: 3, partial: 0, hold: 0, nodel: 0, skip: 0, dur: "9 s", status: "Completed" },
+      { id: "RUN-20261014-2100", trigger: "Sweep · every 15 min", time: "21:00", lines: 51, full: 41, partial: 6, hold: 1, nodel: 0, skip: 2, dur: "1 m 20 s", status: "Completed with retries" },
+    ],
+
+    /* Totals for today before the current batch */
+    today: { lines: 1186, full: 968, partial: 117, hold: 58, nodel: 9, skip: 34, deliveries: 1071, overrides: 11, onTime: 98.6 },
+
+    audit: [
+      { ts: "2026-10-14T21:52", user: "Rahul Deshmukh", type: "Override", obj: "SL-23979", detail: "Kept on hold – customer confirmed next-day pickup (reason: Customer request)" },
+      { ts: "2026-10-13T18:05", user: "Rahul Deshmukh", type: "Override", obj: "SL-23940", detail: "Released 380 of 400 pcs as partial for Deccan Seating (reason: Customer approved partial, ref. email 13-Oct)" },
+      { ts: "2026-10-12T11:20", user: "Priya Nair", type: "Rule change", obj: "R-100457 Kaveri Auto", detail: "Version 5 activated: minimum fill 75% → 80% (simulated on 7 days: 4 partials become holds)" },
+      { ts: "2026-10-09T16:40", user: "Priya Nair", type: "Settings", obj: "Run settings", detail: "Teams alert added for JIT desk, 3 h before cut-off" },
+      { ts: "2026-10-08T09:15", user: "System", type: "Integration", obj: "RUN-20261008-0915", detail: "2 delivery creations retried after S/4HANA lock (no duplicates created)" },
+    ],
+
+    settings: { event: true, sweep: 15, horizon: 24, retries: 3, alertHrs: 3, email: true, teams: true, inapp: true, gr: true },
+
+    weekly: [
+      { wk: "W34", touchless: 0, note: "manual" }, { wk: "W35", touchless: 0 },
+      { wk: "W36", touchless: 78.4 }, { wk: "W37", touchless: 84.9 }, { wk: "W38", touchless: 88.1 },
+      { wk: "W39", touchless: 89.6 }, { wk: "W40", touchless: 90.8 }, { wk: "W41", touchless: 91.4 },
+    ],
+  },
+};
+
+</script>
+<script>
+/* js/app.js */
+/* ===== Prototype shell: router, screen index, roles, annotations, traceability, helpers.
+   Generic — normally you don't edit this file. Put screen behavior in screens.js. ===== */
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const P = window.PROTO;
+  const reqIds = (el) => (el.getAttribute("data-req") || "").split(",").map(s => s.trim()).filter(Boolean);
+
+  const App = window.App = {
+    $, $$, params: {}, current: null, role: P.roles[0] && P.roles[0].id,
+    onShow: {},              // App.onShow["screen-id"] = (params) => { … }  runs every time the screen opens
+    screens: () => $$(".screen"),
+  };
+
+  /* ---------- Roles ---------- */
+  function allowed(el) {
+    const r = el.getAttribute("data-roles");
+    return !r || r.split(",").map(s => s.trim()).includes(App.role);
+  }
+  function applyRoles() {
+    $$("[data-roles]").forEach(el => el.classList.toggle("role-hidden", !allowed(el)));
+    buildIndex();
+  }
+  const roleSel = $("#roleSelect");
+  if (P.roles.length > 1) {
+    roleSel.innerHTML = P.roles.map(r => `<option value="${r.id}">${r.label}</option>`).join("");
+    roleSel.addEventListener("change", () => {
+      App.role = roleSel.value; applyRoles();
+      if (!allowed($(`.screen[data-screen="${App.current}"]`))) App.go(firstScreen());
+      else refreshNotes();
+      App.toast(`Viewing as ${roleSel.selectedOptions[0].text}`);
+    });
+  } else { roleSel.closest(".role-switch").hidden = true; }
+
+  /* ---------- Screen index ---------- */
+  function firstScreen() { const s = App.screens().find(allowed); return s && s.dataset.screen; }
+  function buildIndex() {
+    const groups = {};
+    App.screens().filter(allowed).forEach(s => (groups[s.dataset.group || "Screens"] ||= []).push(s));
+    let n = 0;
+    $("#screenIndex").innerHTML = Object.entries(groups).map(([g, list]) =>
+      `<h3>${g}</h3>` + list.map(s => `<a href="#/${s.dataset.screen}" data-id="${s.dataset.screen}">
+        <span>${s.dataset.title || s.dataset.screen}</span><span class="num">${String(++n).padStart(2, "0")}</span></a>`).join("")
+    ).join("");
+    markActive();
+  }
+  function markActive() { $$("#screenIndex a").forEach(a => a.classList.toggle("active", a.dataset.id === App.current)); }
+  $("#toggleIndex").addEventListener("click", () => document.body.classList.toggle("index-open"));
+
+  /* ---------- Router ---------- */
+  App.go = (target) => { location.hash = "#/" + target; };
+  function route() {
+    const raw = location.hash.replace(/^#\/?/, "");
+    const [id, qs] = raw.split("?");
+    const screen = $(`.screen[data-screen="${id}"]`);
+    if (!screen || !allowed(screen)) { const f = firstScreen(); if (f && f !== id) return App.go(f); }
+    App.params = Object.fromEntries(new URLSearchParams(qs || ""));
+    App.current = (screen && allowed(screen)) ? id : firstScreen();
+    App.screens().forEach(s => s.classList.toggle("active", s.dataset.screen === App.current));
+    const active = $(`.screen[data-screen="${App.current}"]`);
+    document.title = `${active.dataset.title || App.current} – ${P.project} Prototype`;
+    window.scrollTo(0, 0); $("#stage").scrollTop = 0;
+    if (App.onShow[App.current]) App.onShow[App.current](App.params);
+    markActive();
+    refreshNotes();
+  }
+  window.addEventListener("hashchange", route);
+  document.addEventListener("click", (e) => {
+    const g = e.target.closest("[data-go]");
+    if (g) { e.preventDefault(); App.go(g.getAttribute("data-go")); }
+    const c = e.target.closest("[data-close]");
+    if (c) {
+      const id = c.getAttribute("data-close");
+      if (id === "notesPanel") setNotes(false); else $("#" + id).hidden = true;
+    }
+  });
+
+  /* ---------- Annotations ---------- */
+  let notesOn = false;
+  const notesBtn = $("#toggleNotes");
+  function setNotes(on) {
+    notesOn = on; notesBtn.setAttribute("aria-pressed", on);
+    document.body.classList.toggle("notes-on", on); $("#notesPanel").hidden = !on;
+    refreshNotes();
+  }
+  notesBtn.addEventListener("click", () => setNotes(!notesOn));
+  function visibleNotes() {
+    const s = $(`.screen[data-screen="${App.current}"]`);
+    return s ? $$("[data-note]", s).filter(el => el.offsetParent !== null) : [];
+  }
+  function refreshNotes() {
+    $$(".note-badge").forEach(b => b.remove());
+    if (!notesOn) return;
+    const els = visibleNotes();
+    $("#notesList").innerHTML = els.length ? els.map((el, i) => {
+      const generic = { SELECT: "Dropdown", TABLE: "Table", FORM: "Form", TEXTAREA: "Text area" }[el.tagName];
+      const label = el.getAttribute("data-note-label")
+        || (el.labels && el.labels[0] ? el.labels[0].textContent.replace("*", "").trim() : "")
+        || el.getAttribute("aria-label") || el.getAttribute("placeholder")
+        || generic || el.textContent.trim().replace(/\s+/g, " ").slice(0, 40) || el.tagName.toLowerCase();
+      return `<li data-i="${i}"><div class="where">${label}</div>${el.getAttribute("data-note")}
+        <div>${reqIds(el).map(r => `<span class="req-chip">${r}</span>`).join("")}</div></li>`;
+    }).join("") : `<p class="muted">No annotations on this screen.</p>`;
+    els.forEach((el, i) => {
+      const b = document.createElement("span");
+      b.className = "note-badge"; b.textContent = i + 1; b.dataset.i = i;
+      b.addEventListener("click", () => highlight(i));
+      document.body.appendChild(b); b._el = el;
+    });
+    placeBadges();
+  }
+  function placeBadges() {
+    const frame = document.body.classList.contains("device") ? $("#stage").getBoundingClientRect() : null;
+    $$(".note-badge").forEach(b => {
+      const r = b._el.getBoundingClientRect();
+      // In a phone frame the stage scrolls on its own; hide badges for elements scrolled out of the frame.
+      b.hidden = !!frame && (r.bottom < frame.top || r.top > frame.bottom);
+      b.style.top = (r.top + window.scrollY - 10) + "px";
+      b.style.left = (r.right + window.scrollX - 10) + "px";
+    });
+  }
+  function highlight(i) {
+    $$("#notesList li").forEach(li => li.classList.toggle("hl", +li.dataset.i === i));
+    const li = $(`#notesList li[data-i="${i}"]`); li && li.scrollIntoView({ block: "nearest" });
+  }
+  $("#notesList").addEventListener("click", (e) => {
+    const li = e.target.closest("li"); if (!li) return;
+    const el = visibleNotes()[+li.dataset.i]; if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    highlight(+li.dataset.i);
+  });
+  window.addEventListener("resize", placeBadges);
+  window.addEventListener("scroll", placeBadges, { passive: true });
+  $("#stage").addEventListener("scroll", placeBadges, { passive: true });
+
+  /* ---------- Traceability matrix ---------- */
+  function buildMatrix() {
+    const where = {};   // reqId -> [{screen, title, note}]
+    App.screens().forEach(s => {
+      const add = (id, note) => (where[id] ||= []).push({ screen: s.dataset.screen, title: s.dataset.title, note });
+      reqIds(s).forEach(id => add(id, null));
+      $$("[data-req]", s).forEach(el => reqIds(el).forEach(id => add(id, el.getAttribute("data-note"))));
+    });
+    const known = new Set(P.requirements.map(r => r.id));
+    let covered = 0, nonui = 0, out = 0, gaps = 0;
+    const rows = P.requirements.map(r => {
+      const hits = where[r.id] || [];
+      let status;
+      if (r.ui === false) { status = "Non-UI"; nonui++; }
+      else if (r.scope === "out") { status = "Not prototyped"; out++; }
+      else if (hits.length) { status = "Covered"; covered++; }
+      else { status = "Gap"; gaps++; }
+      const screens = [...new Map(hits.map(h => [h.screen, h])).values()]
+        .map(h => `<a class="req-chip" href="#/${h.screen}" data-close="matrixOverlay">${h.title}</a>`).join("");
+      const notes = hits.filter(h => h.note).map(h => `<div class="muted">• ${h.note}</div>`).join("");
+      const cls = { Covered: "success", Gap: "danger", "Non-UI": "neutral", "Not prototyped": "warning" }[status];
+      return `<tr class="${status === "Gap" ? "gap" : ""}"><td><strong>${r.id}</strong></td><td>${r.title}${r.note ? `<div class="muted">${r.note}</div>` : ""}</td>
+        <td><span class="status ${cls}">${status}</span></td><td>${screens || "—"}${notes}</td></tr>`;
+    }).join("");
+    const unknown = Object.keys(where).filter(id => !known.has(id));
+    $("#matrixBody").innerHTML = `
+      <p class="muted">Source: ${P.source || "—"}</p>
+      <div class="cov-summary">
+        <div><strong>${covered}/${P.requirements.length - nonui}</strong><span class="muted">UI requirements covered</span></div>
+        <div><strong>${nonui}</strong><span class="muted">Non-UI</span></div>
+        <div><strong>${out}</strong><span class="muted">Not prototyped</span></div>
+        <div><strong>${gaps}</strong><span class="muted">Gaps</span></div>
+      </div>
+      ${unknown.length ? `<p class="status danger">Referenced but not defined: ${unknown.join(", ")}</p>` : ""}
+      <table class="matrix"><thead><tr><th>ID</th><th>Requirement</th><th>Status</th><th>Where / rules</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  $("#openMatrix").addEventListener("click", () => { buildMatrix(); $("#matrixOverlay").hidden = false; });
+
+  /* ---------- Assumptions ---------- */
+  $("#openAssumptions").addEventListener("click", () => {
+    $("#assumptionsBody").innerHTML = P.assumptions.length
+      ? `<table class="matrix"><tbody>${P.assumptions.map(a => `<tr><td><span class="status ${a.type === "Question" ? "warning" : "info"}">${a.type}</span></td><td>${a.text}</td></tr>`).join("")}</tbody></table>`
+      : `<p class="muted">None recorded.</p>`;
+    $("#assumptionsOverlay").hidden = false;
+  });
+
+  /* ---------- Helpers for screens.js ---------- */
+  App.toast = (msg, type = "") => {
+    const t = document.createElement("div"); t.className = "toast " + type; t.textContent = msg;
+    $("#toastHost").appendChild(t); setTimeout(() => t.remove(), 3000);
+  };
+  // App.modal({ title, body (html), actions: [{ label, kind: "primary"|"danger"|"", onClick(close, dialogEl) -> return false to keep open }] })
+  App.modal = ({ title, body = "", actions = [{ label: "OK", kind: "primary" }] }) => {
+    const ov = $("#modalOverlay"); $("#modalTitle").textContent = title; $("#modalBody").innerHTML = body;
+    const close = () => { ov.hidden = true; };
+    $("#modalActions").innerHTML = "";
+    actions.forEach(a => {
+      const b = document.createElement("button"); b.className = "btn " + (a.kind || ""); b.textContent = a.label;
+      b.addEventListener("click", () => { if (!a.onClick || a.onClick(close, $("#modalBody")) !== false) close(); });
+      $("#modalActions").appendChild(b);
+    });
+    ov.hidden = false; const f = $("input,textarea,select", ov); f && f.focus();
+  };
+  // Validates required / maxlength / min / max / type=email / pattern. Custom rule: extra(fieldEl) -> error string or "".
+  App.validate = (form, extra = {}) => {
+    let ok = true;
+    $$("input,select,textarea", form).forEach(el => {
+      const f = el.closest(".field"); if (!f) return;
+      const v = el.value.trim(); let err = "";
+      const label = (f.querySelector("label")?.textContent || "This field").replace("*", "").trim();
+      if (el.required && !v) err = `${label} is required.`;
+      else if (v && el.maxLength > 0 && v.length > el.maxLength) err = `Max ${el.maxLength} characters.`;
+      else if (v && el.type === "number" && el.min !== "" && +v < +el.min) err = `Must be at least ${el.min}.`;
+      else if (v && el.type === "number" && el.max !== "" && +v > +el.max) err = `Must be at most ${el.max}.`;
+      else if (v && el.type === "email" && !/^\S+@\S+\.\S+$/.test(v)) err = "Enter a valid email address.";
+      else if (v && el.pattern && !new RegExp("^(?:" + el.pattern + ")$").test(v)) err = el.dataset.msg || "Invalid format.";
+      else if (extra[el.name]) err = extra[el.name](el) || "";
+      f.classList.toggle("invalid", !!err);
+      const box = f.querySelector(".error"); if (box) box.textContent = err;
+      if (err && ok) { ok = false; el.focus(); }
+    });
+    return ok;
+  };
+  App.money = (n, cur = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(n);
+  App.date = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  App.statusClass = (s) => ({ Approved: "success", Completed: "success", Active: "success", Rejected: "danger", Failed: "danger",
+    Submitted: "info", "In Review": "info", Pending: "warning", Draft: "neutral" }[s] || "neutral");
+  App.esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------- Keyboard (demo-friendly) ---------- */
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { $$(".overlay").forEach(o => o.hidden = true); return; }
+    if (e.target.matches("input,textarea,select") || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "n" || e.key === "N") setNotes(!notesOn);
+    if (e.key === "t" || e.key === "T") $("#openMatrix").click();
+    if (e.key === "[" || e.key === "]") {
+      const ids = $$("#screenIndex a").map(a => a.dataset.id); const i = ids.indexOf(App.current);
+      const next = ids[i + (e.key === "]" ? 1 : -1)]; if (next) App.go(next);
+    }
+  });
+
+  /* ---------- Boot (after screens.js has registered hooks) ---------- */
+  App.start = () => {
+    const pn = $(".product-name"); if (pn) pn.textContent = P.project;
+    // PROTO.device: "web" (default) | "ios" | "android" — the latter two render screens inside a phone frame.
+    if (P.device && P.device !== "web") document.body.classList.add("device", "device-" + P.device);
+    if (window.matchMedia("(min-width: 1100px)").matches) document.body.classList.add("index-open");
+    applyRoles(); route();
+  };
+  document.addEventListener("DOMContentLoaded", App.start);
+})();
+
+</script>
+<script>
+/* js/screens.js */
+/* ===== Screen behaviour – Delivery Automation Cockpit ===== */
+(function () {
+  const { $, $$, esc } = App;
+  const INITIAL = JSON.parse(JSON.stringify(PROTO.db));
+  let db = PROTO.db;
+  const NOW = new Date(PROTO.now);
+  const USERS = { planner: { name: "Rahul Deshmukh", ini: "RD" }, keyuser: { name: "Priya Nair", ini: "PN" }, manager: { name: "Sanjay Mehta", ini: "SM" } };
+  const me = () => USERS[App.role];
+  let runState = { running: false, run: null, results: [] };
+  let delSeq = 80045107, clockSec = 2;
+
+  /* ---------------- helpers ---------------- */
+  const cust = (id) => db.customers[id] || { name: id };
+  const custShort = (id) => cust(id).name.replace(/ (Ltd\.|Pvt\. Ltd\.|GmbH)$/, "");
+  const rule = (custId) => db.rules.find(r => r.cust === custId);
+  const avail = (l) => Math.max(0, l.stock.unr - l.stock.alloc);
+  const pad = (n) => String(n).padStart(2, "0");
+  const dt = (iso) => { const d = new Date(iso); return `${d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}, ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const hm = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const stamp = () => { const s = clockSec++; return `22:${pad(Math.floor(s / 60))}:${pad(s % 60)}`; };
+  const num = (n) => new Intl.NumberFormat("en-IN").format(n);
+  const isOpenExc = (l) => l.dec && ["Hold", "No delivery", "Skip"].includes(l.dec.decision) && !l.closed;
+  const DEC_CLASS = { "Full": "full", "Partial": "partial", "Hold": "hold", "No delivery": "nodel", "Skip": "skip", "Awaiting run": "wait", "Override – partial": "ovr", "Closed": "wait" };
+  const decOf = (l) => l.closed ? (l.closedAs || "Closed") : l.dec ? l.dec.decision : "Awaiting run";
+  const badge = (txt) => `<span class="dec ${DEC_CLASS[txt] || "wait"}">${esc(txt)}</span>`;
+  const audit = (type, obj, detail, user) => db.audit.unshift({ ts: "2026-10-14T" + stamp().slice(0, 5), user: user || me().name, type, obj, detail });
+  const trail = (l, what, kind = "") => (l.trail ||= []).push({ when: "14 Oct, " + stamp(), what, kind });
+
+  function cutoffInfo(l) {
+    const r = rule(l.cust); const cut = new Date(new Date(l.due).getTime() - r.cutoffHrs * 3600e3);
+    const mins = Math.round((cut - NOW) / 60000);
+    const cls = mins < 120 ? "red" : mins < 240 ? "amber" : "green";
+    const txt = mins <= 0 ? "Overdue" : `${Math.floor(mins / 60)} h ${pad(mins % 60)} m`;
+    return { mins, cls, txt, at: `${pad(cut.getHours())}:${pad(cut.getMinutes())}`, cut };
+  }
+
+  /* ---------------- decision engine ---------------- */
+  function evaluate(l, r) {
+    const a = avail(l), q = l.qty, fill = Math.round(a / q * 1000) / 10;
+    const checks = [];
+    const add = (label, st, d, res = "") => checks.push({ label, st, d, res });
+    const out = (decision, qty, cat, reason) => ({ decision, qty, cat, reason, checks, fill, avail: a, ruleVer: r.version, ruleId: r.id });
+
+    if (l.flags.credit || l.flags.delBlock) { add("No delivery or credit block", "fail", l.flags.credit || l.flags.delBlock, "Skip"); return out("Skip", 0, "Credit / delivery block", l.flags.credit || l.flags.delBlock); }
+    add("No delivery or credit block", "pass", "Sales document and customer not blocked in S/4HANA");
+    if (!l.route) { add("Master data complete", "fail", l.flags.noRoute, "Skip"); return out("Skip", 0, "Missing master data", l.flags.noRoute); }
+    add("Master data complete", "pass", `Route ${l.route}, shipping point ${l.shipPt}`);
+    if (l.saType === "LZJ") {
+      if (r.seqComplete && l.flags.seqGap) { add("JIT sequence complete", "fail", `${l.flags.seqGap}. Rule: sequence must ship complete.`, "No delivery"); return out("No delivery", 0, "JIT sequence gap", l.flags.seqGap); }
+      add("JIT sequence complete", "pass", `All positions ${l.seq} available`);
+    } else add("JIT sequence complete", "na", "Not a JIT call (LZ delivery schedule)");
+    if (a >= q) { add("Due quantity available", "pass", `${num(a)} available ≥ ${num(q)} due`, "Full"); add("Under-delivery tolerance", "na", "Not needed"); add("Partials allowed / minimum fill", "na", "Not needed"); return out("Full", q, null, "Full quantity available"); }
+    add("Due quantity available", "warn", `${num(a)} of ${num(q)} available – shortfall ${num(q - a)} (${fill}% fill)`);
+    if (fill >= 100 - r.tolUnder) { add("Under-delivery tolerance", "pass", `${fill}% ≥ ${100 - r.tolUnder}% (tolerance ${r.tolUnder}%) – ship as full, close line`, "Full"); add("Partials allowed / minimum fill", "na", "Not needed"); return out("Full", a, null, `Shortfall within ${r.tolUnder}% tolerance`); }
+    add("Under-delivery tolerance", r.tolUnder ? "fail" : "na", r.tolUnder ? `${fill}% < ${100 - r.tolUnder}% (tolerance ${r.tolUnder}%)` : "No tolerance agreed");
+    if (!r.partials) { add("Partials allowed / minimum fill", "fail", "Customer does not accept partial deliveries", "Hold"); return out("Hold", 0, "Partials not allowed", "Customer does not accept partial deliveries"); }
+    if (fill >= r.minFill) { add("Partials allowed / minimum fill", "pass", `Partials allowed; ${fill}% ≥ minimum ${r.minFill}%`, "Partial"); return out("Partial", a, null, `Partial ${num(a)} of ${num(q)}; ${num(q - a)} stays open`); }
+    add("Partials allowed / minimum fill", "fail", `Partials allowed but ${fill}% < minimum ${r.minFill}%`, "Hold");
+    return out("Hold", 0, "Below minimum fill", `Only ${fill}% available; customer minimum is ${r.minFill}%`);
+  }
+
+  function createDelivery(l, qty, type, by) {
+    const id = String(delSeq++);
+    db.deliveries.unshift({ id, line: l.id, cust: l.cust, sa: l.sa, mat: l.mat, qty, type, route: l.route, shipPt: l.shipPt, created: "2026-10-14T22:0" + Math.min(9, Math.floor(clockSec / 60)), by, pick: "Not started" });
+    l.delivery = id; return id;
+  }
+
+  function decideAndPost(l, by, viaRun) {
+    const r = rule(l.cust); const res = evaluate(l, r); l.dec = res; l.closed = false;
+    trail(l, `Availability: ${num(l.stock.unr)} unrestricted − ${num(l.stock.alloc)} allocated to earlier demand = <b>${num(res.avail)}</b> available (QI ${l.stock.qi}, blocked ${l.stock.blocked} not used)`);
+    trail(l, `Rule ${r.id} v${r.version} → <b>${res.decision}</b>: ${esc(res.reason)}`);
+    if (res.decision === "Full" || res.decision === "Partial") {
+      const id = createDelivery(l, res.qty, res.decision, viaRun ? "Automation" : by);
+      trail(l, `Outbound delivery <b>${id}</b> created with reference to SA ${l.sa}/${l.item} (${num(res.qty)} pcs, route ${l.route})`);
+    } else {
+      trail(l, `Exception raised (${res.cat}); escalated to ${rule(l.cust).escalate}; alert sent (in-app${db.settings.email ? ", email" : ""}${db.settings.teams ? ", Teams" : ""})`, "x");
+    }
+    return res;
+  }
+
+  /* ---------------- shell: avatar, bell, role switch ---------------- */
+  function refreshShell() {
+    $("#avatar").textContent = me().ini; $("#avatar").title = me().name;
+    const due = db.lines.filter(isOpenExc).filter(l => cutoffInfo(l).mins <= (db.settings.alertHrs + 2) * 60);
+    const dot = $("#bellDot"); dot.hidden = !due.length || App.role === "keyuser"; dot.textContent = due.length;
+  }
+  $("#bellBtn").addEventListener("click", (e) => {
+    e.stopPropagation(); const pop = $("#bellPop");
+    if (!pop.hidden) { pop.hidden = true; return; }
+    const ex = db.lines.filter(isOpenExc).sort((a, b) => cutoffInfo(a).mins - cutoffInfo(b).mins);
+    pop.innerHTML = `<h3>Notifications</h3>` + (ex.length ? ex.map(l => { const c = cutoffInfo(l); return `<a href="#/line?id=${l.id}"><span class="sla ${c.cls}">${c.txt}</span> to cut-off · <b>${l.id}</b> ${esc(custShort(l.cust))}<div class="muted" style="font-size:.8rem">${esc(l.dec.cat)} – ${esc(l.matDesc)}</div></a>`; }).join("") : `<a href="#/overview" class="muted">No alerts. Exceptions appear here as they approach cut-off.</a>`);
+    pop.hidden = false;
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest("#bellPop")) $("#bellPop").hidden = true; });
+  $("#roleSelect").addEventListener("change", () => setTimeout(() => { refreshShell(); const f = App.onShow[App.current]; f && f(App.params); }, 0));
+
+  /* ---------------- 1. Overview ---------------- */
+  function totals() {
+    const t = { ...db.today }; const proc = db.lines.filter(l => l.dec);
+    proc.forEach(l => { t.lines++; const k = { "Full": "full", "Partial": "partial", "Hold": "hold", "No delivery": "nodel", "Skip": "skip" }[l.dec.decision]; t[k]++; });
+    t.deliveries = db.today.deliveries + db.deliveries.filter(d => d.created.startsWith("2026-10-14T22")).length;
+    t.overrides = db.today.overrides + db.lines.filter(l => l.overridden).length;
+    t.touchless = (t.full + t.partial) / t.lines * 100;
+    t.open = db.lines.filter(isOpenExc).length; return t;
+  }
+  App.onShow["overview"] = () => {
+    const t = totals(); const pending = db.lines.filter(l => !l.dec).length; const last = db.runs[0];
+    $("#ovStripText").innerHTML = pending
+      ? `<b>${pending} schedule lines</b> are due in the next 24 h and waiting for the next run. Event listener active · next sweep at <b>22:15</b>.` + (App.role === "planner" ? ` Click <b>Run automation now</b> to process them.` : "")
+      : `Last run <b>${last.id}</b> at ${last.time}: ${last.lines} lines, ${last.full + last.partial} delivered automatically, ${last.hold + last.nodel + last.skip} exceptions. Next sweep at <b>22:15</b>.`;
+    $("#runNow").disabled = !pending;
+    $("#kpis").innerHTML = [
+      { l: "Lines processed today", v: num(t.lines), s: "since 00:00", go: "demand" },
+      { l: "Touchless rate", v: t.touchless.toFixed(1) + "%", s: "target 90%", c: t.touchless >= 90 ? "good" : "warn" },
+      { l: "Deliveries created", v: num(t.deliveries), s: `${t.full} full · ${t.partial} partial`, go: "deliveries", c: "brand" },
+      { l: "Open exceptions", v: t.open, s: t.open ? "need a planner decision" : "nothing waiting", go: "exceptions", c: t.open ? "bad" : "good" },
+      { l: "Planner overrides", v: t.overrides, s: "today, all audited", go: App.role === "planner" ? "" : "audit" },
+      { l: "On-time vs JIT window", v: db.today.onTime + "%", s: "last 7 days", c: "good" },
+    ].map(k => `<div class="kpi" ${k.go && !(k.go === "exceptions" && App.role === "keyuser") ? `data-go="${k.go}"` : ""}><div class="lbl">${k.l}</div><div class="val ${k.c || ""}">${k.v}</div><div class="sub">${k.s}</div></div>`).join("");
+    const bars = [["Full", t.full, "var(--c5)"], ["Partial", t.partial, "var(--c1)"], ["Hold", t.hold, "var(--c3)"], ["No delivery", t.nodel, "var(--c2)"], ["Skip", t.skip, "var(--c4)"]];
+    const max = Math.max(...bars.map(b => b[1]));
+    $("#todayTotal").textContent = `${num(t.lines)} lines`;
+    $("#todayBars").innerHTML = bars.map(([n, v, c]) => `<div class="hbar"><span>${badge(n)}</span><div class="bar"><i style="width:${v / max * 100}%;background:${c}"></i></div><span class="n">${num(v)}</span></div>`).join("");
+    $("#runsTable tbody").innerHTML = db.runs.slice(0, 6).map(r => `<tr data-go="run"><td><b>${r.id.slice(-4).replace(/(..)(..)/, "$1:$2")}</b><span class="sub">${r.id}</span></td><td>${esc(r.trigger)}</td><td class="num-cell">${r.lines}</td>
+      <td style="font-size:.8rem">${r.full + r.partial} delivered · ${r.hold + r.nodel + r.skip} exc.</td><td>${r.dur}</td><td><span class="status ${r.status === "Completed" ? "success" : "warning"}">${r.status}</span></td></tr>`).join("");
+    $("#scenList").innerHTML = db.lines.map(l => `<li><div><div class="t">${esc(l.scen)}</div><div class="d">${l.id} · ${esc(custShort(l.cust))} · ${esc(l.mat)} · ${num(l.qty)} due ${dt(l.due)}</div></div><span style="display:flex;gap:.4rem;align-items:center">${badge(decOf(l))}<a class="btn sm" href="#/line?id=${l.id}">Open</a></span></li>`).join("");
+    $("#scenHint").textContent = db.lines.some(l => l.dec) ? "Open any line to see the stock snapshot, the rule checks and the delivery or exception that resulted." : "Each due line below exercises one business rule. Run the automation, then open any line to see why it was decided that way.";
+    const ex = db.lines.filter(isOpenExc).sort((a, b) => cutoffInfo(a).mins - cutoffInfo(b).mins).slice(0, 4);
+    $("#ovExc").innerHTML = ex.length ? `<table class="table"><tbody>${ex.map(l => { const c = cutoffInfo(l); return `<tr data-go="line?id=${l.id}"><td><b>${l.id}</b><span class="sub">${esc(custShort(l.cust))}</span></td><td>${badge(l.dec.decision)}<span class="sub">${esc(l.dec.cat)}</span></td><td class="num-cell"><span class="sla ${c.cls}">${c.txt}</span><span class="sub">cut-off ${c.at}</span></td></tr>`; }).join("")}</tbody></table>`
+      : `<div class="empty" style="padding:1rem">${db.lines.some(l => l.dec) ? "No open exceptions." : "No exceptions yet – run the automation."}</div>`;
+    refreshShell();
+  };
+  $("#runNow").addEventListener("click", () => { App.go("run"); setTimeout(startRun, 200); });
+  $("#resetDemo").addEventListener("click", () => App.modal({ title: "Reset demo data?", body: "<p>All runs, deliveries, overrides and rule changes made in this session are discarded.</p>",
+    actions: [{ label: "Cancel" }, { label: "Reset", kind: "danger", onClick: () => { PROTO.db = db = JSON.parse(JSON.stringify(INITIAL)); runState = { running: false, run: null, results: [] }; delSeq = 80045107; clockSec = 2; App.toast("Demo data restored", "success"); App.onShow.overview(); } }] }));
+
+  /* ---------------- 2. Run monitor ---------------- */
+  const STEPS = [["Trigger", "Event Mesh / sweep / on demand"], ["Collect demand", "Due lines in 24 h horizon"], ["Check availability", "Stock & ATP per plant/sloc"], ["Apply agreement rules", "Full · partial · hold"], ["Create delivery", "Outbound delivery API"], ["Close the loop", "Alerts, re-checks, log"]];
+  function drawSteps(active, doneUpto) {
+    $("#pflow").innerHTML = STEPS.map((s, i) => `<div class="pstep ${i === active ? "active" : i <= doneUpto ? "done" : ""}"><div class="n">STEP ${i + 1}</div><div class="t">${s[0]}</div><div class="s">${s[1]}</div></div>`).join("");
+  }
+  function log(html, cls = "") { const el = $("#runLog"); el.insertAdjacentHTML("beforeend", `<div><span class="ts">${stamp()}</span> <span class="${cls}">${html}</span></div>`); el.scrollTop = el.scrollHeight; }
+  function drawResults() {
+    const res = runState.results;
+    $("#runResults tbody").innerHTML = res.length ? res.map(l => `<tr data-go="line?id=${l.id}"><td><b>${l.id}</b><span class="sub">${l.saType} ${l.sa}/${l.item}</span></td><td>${esc(custShort(l.cust))}</td><td class="num-cell">${num(l.qty)}</td><td>${badge(l.dec.decision)}</td><td>${l.delivery ? `<a href="#/delivery?id=${l.delivery}">${l.delivery}</a>` : `<span class="muted">${esc(l.dec.cat || "")}</span>`}</td></tr>`).join("")
+      : `<tr><td colspan="5" class="muted" style="text-align:center;padding:2rem">Decisions appear here as each line is processed.</td></tr>`;
+    const c = (d) => res.filter(l => l.dec.decision === d).length;
+    $("#runCounts").innerHTML = res.length ? `${badge("Full")} ${c("Full")} ${badge("Partial")} ${c("Partial")} ${badge("Hold")} ${c("Hold") + c("No delivery") + c("Skip")}` : "";
+  }
+  App.onShow["run"] = () => {
+    const pending = db.lines.filter(l => !l.dec).length;
+    $("#runStart").disabled = runState.running || !pending;
+    if (runState.running) return;
+    if (runState.run) { $("#runTitle").textContent = `Automation Run ${runState.run.id}`; $("#runSub").textContent = `Trigger: ${runState.run.trigger} · completed in ${runState.run.dur}`; drawSteps(-1, 5); }
+    else {
+      $("#runTitle").textContent = "Automation Run"; $("#runSub").textContent = pending ? `${pending} due lines waiting · trigger on demand or next sweep 22:15` : "No due lines waiting";
+      drawSteps(-1, -1); $("#runLog").innerHTML = `<div class="ts">Waiting for trigger… last run ${db.runs[0].id} (${db.runs[0].trigger}).</div>`;
+      $("#runBar").style.width = "0"; $("#runProgText").textContent = "Waiting to start"; $("#runProgPct").textContent = "0%";
+    }
+    drawResults();
+  };
+  $("#runStart").addEventListener("click", startRun);
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  async function startRun() {
+    const batch = db.lines.filter(l => !l.dec); if (!batch.length || runState.running) return;
+    runState = { running: true, run: null, results: [] }; $("#runStart").disabled = true; $("#runNow").disabled = true;
+    const id = "RUN-20261014-2200", trig = `On demand · ${me().name}`;
+    $("#runTitle").textContent = `Automation Run ${id}`; $("#runSub").textContent = `Trigger: ${trig} · running…`;
+    $("#runLog").innerHTML = ""; drawResults();
+    const prog = (i, txt) => { const p = Math.round(i / (batch.length + 2) * 100); $("#runBar").style.width = p + "%"; $("#runProgPct").textContent = p + "%"; $("#runProgText").textContent = txt; };
+    drawSteps(0, -1); log(`Run ${id} started (${trig}). Plant IN10, horizon 24 h.`, "i"); prog(0, "Trigger received"); await wait(500);
+    drawSteps(1, 0); log(`Read due schedule lines and JIT calls from S/4HANA: <b>${batch.length}</b> lines across ${new Set(batch.map(l => l.cust)).size} customers.`); prog(1, "Collecting demand"); await wait(600);
+    let i = 0;
+    for (const l of batch) {
+      i++; prog(1 + i, `Line ${i} of ${batch.length}: ${l.id}`);
+      drawSteps(2, 1); log(`${l.id} ${l.mat} – stock IN10/${l.sloc}: unr ${l.stock.unr}, allocated ${l.stock.alloc} → avail ${avail(l)} for ${l.qty} due`); await wait(260);
+      drawSteps(3, 2); trail(l, `Picked up by run ${id} (${trig})`);
+      const res = decideAndPost(l, me().name, true);
+      const cls = { Full: "ok", Partial: "ok", Hold: "w", "No delivery": "e", Skip: "e" }[res.decision];
+      log(`${l.id} rule ${res.ruleId} v${res.ruleVer} → <b>${res.decision}</b> (${esc(res.reason)})`, cls); await wait(260);
+      drawSteps(4, 3);
+      if (l.delivery) log(`${l.id} outbound delivery <b>${l.delivery}</b> created · ${res.qty} pcs · route ${l.route}`, "ok");
+      else log(`${l.id} no delivery – exception "${res.cat}" → ${rule(l.cust).escalate}`, "w");
+      runState.results.push(l); drawResults(); await wait(240);
+    }
+    drawSteps(5, 4); const exc = batch.filter(isOpenExc);
+    log(`Alerts sent for ${exc.length} exceptions (in-app${db.settings.email ? ", email" : ""}${db.settings.teams ? ", Teams" : ""}). Held lines subscribed to goods-receipt re-check.`, "i"); await wait(500);
+    const c = (d) => batch.filter(l => l.dec.decision === d).length;
+    const run = { id, trigger: trig, time: "22:00", lines: batch.length, full: c("Full"), partial: c("Partial"), hold: c("Hold"), nodel: c("No delivery"), skip: c("Skip"), dur: "14 s", status: "Completed" };
+    db.runs.unshift(run); runState.run = run; runState.running = false;
+    drawSteps(-1, 5); prog(batch.length + 2, "Run completed"); $("#runSub").textContent = `Trigger: ${trig} · completed in ${run.dur}`;
+    log(`Run completed: ${run.full + run.partial} deliveries created, ${exc.length} exceptions. 0 errors, 0 retries.`, "ok");
+    App.toast(`Run completed – ${run.full + run.partial} deliveries created, ${exc.length} exceptions`, "success"); refreshShell();
+  }
+
+  /* ---------------- 3. Demand worklist ---------------- */
+  Object.entries(db.customers).forEach(([id, c]) => $("#dqCust").insertAdjacentHTML("beforeend", `<option value="${id}">${esc(c.name)}</option>`));
+  function renderDemand() {
+    const q = $("#dqSearch").value.trim().toLowerCase(), c = $("#dqCust").value, t = $("#dqType").value, d = $("#dqDec").value;
+    const rows = db.lines.filter(l => (!q || [l.id, l.sa, l.jit, l.mat, l.matDesc].join(" ").toLowerCase().includes(q)) && (!c || l.cust === c) && (!t || l.saType === t)
+      && (!d || decOf(l) === d || (d === "Override" && l.overridden))).sort((a, b) => a.due.localeCompare(b.due));
+    $("#dqCount").textContent = `Schedule lines (${rows.length})`;
+    $("#dqTable tbody").innerHTML = rows.map(l => { const a = avail(l), f = Math.min(100, Math.round(a / l.qty * 100)); return `<tr data-go="line?id=${l.id}">
+      <td><b>${l.id}</b><span class="sub">${l.saType} ${l.sa}/${l.item}${l.jit ? ` · ${l.jit} seq ${l.seq}` : ""}</span></td>
+      <td>${esc(custShort(l.cust))}<span class="sub">${esc(l.shipTo)} · ${esc(l.unload)}</span></td>
+      <td>${esc(l.mat)}<span class="sub">${esc(l.matDesc)}</span></td><td class="mono">${dt(l.due)}</td>
+      <td class="num-cell">${num(l.qty)}</td><td class="num-cell">${num(a)}</td><td class="num-cell">${f}%</td><td>${badge(decOf(l))}</td>
+      <td>${l.delivery ? `<a href="#/delivery?id=${l.delivery}">${l.delivery}</a>` : "<span class='muted'>—</span>"}</td></tr>`; }).join("");
+    $("#dqEmpty").hidden = rows.length > 0; $("#dqTable").hidden = !rows.length;
+  }
+  App.onShow["demand"] = (p) => { if (p.dec) $("#dqDec").value = p.dec; renderDemand(); };
+  ["#dqSearch", "#dqCust", "#dqType", "#dqDec"].forEach(s => $(s).addEventListener(s === "#dqSearch" ? "input" : "change", renderDemand));
+  $("#dqClear").addEventListener("click", () => { ["#dqSearch", "#dqCust", "#dqType", "#dqDec"].forEach(s => $(s).value = ""); renderDemand(); });
+  $("#dqExport").addEventListener("click", () => App.toast("Export to Excel started (mocked in prototype)"));
+
+  /* ---------------- 4. Line detail ---------------- */
+  let L = null;
+  App.onShow["line"] = ({ id }) => {
+    L = db.lines.find(x => x.id === id) || db.lines[0]; const l = L, r = rule(l.cust), a = avail(l);
+    $("#lnCrumb").textContent = l.id; $("#lnTitle").innerHTML = `${l.id} · ${esc(l.matDesc)} ${badge(decOf(l))}`;
+    $("#lnSub").textContent = `${cust(l.cust).name} · ${l.saType === "LZJ" ? "JIT call " + l.jit + " (sequence " + l.seq + ")" : "Delivery schedule"} · SA ${l.sa}/${l.item}`;
+    const c = isOpenExc(l) ? cutoffInfo(l) : null;
+    $("#lnFacts").innerHTML = [["Due", dt(l.due)], ["Due quantity", num(l.qty) + " pcs"], ["Available", num(a) + " pcs"], ["Fill", Math.round(a / l.qty * 100) + "%"], ["Rule", `${r.id} v${r.version}`],
+      c ? ["Cut-off in", `<span class="sla ${c.cls}">${c.txt}</span>`] : ["Delivery", l.delivery ? `<a href="#/delivery?id=${l.delivery}">${l.delivery}</a>` : "—"]].map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`).join("");
+    // Actions
+    const P = App.role === "planner"; let acts = "";
+    if (P) {
+      if (!l.dec) acts = `<button class="btn primary" data-act="run">Run automation now</button>`;
+      else if (isOpenExc(l)) {
+        if (l.dec.cat === "Credit / delivery block") acts = `<button class="btn primary" data-act="retry-block">Retry – block released</button>`;
+        else if (l.dec.cat === "Missing master data") acts = `<button class="btn primary" data-act="route">Maintain route &amp; retry</button>`;
+        else acts = `<button class="btn" data-act="gr" title="Demo helper: posts a goods receipt for this material">Simulate goods receipt</button><button class="btn" data-act="recheck">Re-check now</button><button class="btn primary" data-act="override">Override…</button>`;
+      }
+    }
+    $("#lnActions").innerHTML = acts;
+    $$("#lnActions [data-act]").forEach(b => { b.setAttribute("data-req", { override: "REQ-12", recheck: "REQ-13", gr: "REQ-13", run: "REQ-02", "retry-block": "REQ-09", route: "REQ-09" }[b.dataset.act]); });
+    if ($("#lnActions [data-act=override]")) $("#lnActions [data-act=override]").setAttribute("data-note", "Planner only. Reason code + comment (≥10 chars) mandatory; written to the audit log. Managers and key users see the line read-only.");
+    // Strip
+    let s = "";
+    if (!l.dec) s = `<div class="strip info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg><div class="grow">This line is waiting for the next automation run. Scenario: <b>${esc(l.scen)}</b>.</div></div>`;
+    else if (l.closed) s = `<div class="strip ok"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><div class="grow"><b>Resolved by planner.</b> ${esc(l.resolution)}</div></div>`;
+    else if (isOpenExc(l)) s = `<div class="strip ${l.dec.decision === "Hold" ? "warn" : "err"}"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v4M12 17v.5"/></svg><div class="grow"><b>${esc(l.dec.cat)}.</b> ${esc(l.dec.reason)}. Escalated to ${esc(r.escalate)}; resolve before cut-off at ${c.at}.${l.plannerNote ? `<br><i>Planner: ${esc(l.plannerNote)}</i>` : ""}</div></div>`;
+    else s = `<div class="strip ok"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg><div class="grow"><b>Delivered automatically.</b> ${esc(l.dec.reason)} – delivery <a href="#/delivery?id=${l.delivery}">${l.delivery}</a>.</div></div>`;
+    $("#lnStrip").innerHTML = s;
+    $("#lnDemand").innerHTML = [["Customer", cust(l.cust).name + ` (prio ${cust(l.cust).prio})`], ["Agreement", `${l.saType} ${l.sa} item ${l.item}`], ["JIT call / sequence", l.jit ? `${l.jit} · ${l.seq}` : "—"], ["Ship-to", l.shipTo], ["Unloading point", l.unload],
+      ["Material", `${l.mat} – ${l.matDesc}`], ["Plant / storage loc.", `${l.plant} / ${l.sloc}`], ["Route / shipping point", `${l.route || "<span class='status danger'>missing</span>"} / ${l.shipPt}`], ["Due", dt(l.due)], ["Due quantity", num(l.qty) + " pcs"]]
+      .map(([k, v]) => `<div><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+    const st = l.stock, tot = Math.max(st.unr + st.qi + st.blocked, l.qty), w = (n) => n / tot * 100;
+    $("#lnAvail").innerHTML = `<div class="cover"><i style="width:${w(Math.min(st.alloc, st.unr))}%;background:var(--c6);opacity:.35"></i><i style="width:${w(a)}%;background:var(--c5)"></i><i style="width:${w(st.qi)}%;background:var(--c3)"></i><i style="width:${w(st.blocked)}%;background:var(--c2)"></i></div>
+      <div class="legend"><span><i style="background:var(--c6);opacity:.35"></i>Allocated to earlier demand ${num(st.alloc)}</span><span><i style="background:var(--c5)"></i>Available for this line ${num(a)}</span><span><i style="background:var(--c3)"></i>Quality inspection ${num(st.qi)}</span><span><i style="background:var(--c2)"></i>Blocked ${num(st.blocked)}</span><span><b>Due ${num(l.qty)}</b> · ${a >= l.qty ? "fully covered" : "short " + num(l.qty - a)}</span></div>
+      ${l.competing ? `<div class="strip info" style="margin:.8rem 0 0"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg><div class="grow"><b>Allocation:</b> ${esc(l.competing)} Order: earliest due first, then customer priority.</div></div>` : ""}`;
+    if (l.dec) {
+      $("#lnRule").innerHTML = `<p class="muted" style="margin-top:0">Rule <b>${r.id}</b> version ${l.dec.ruleVer} for ${esc(cust(l.cust).name)}: partials ${r.partials ? "allowed, min " + r.minFill + "%" : "not allowed"} · tolerance ${r.tolUnder}% · ${r.seqComplete ? "JIT sequence complete" : "no sequence rule"}.</p>
+        <ul class="checks">${l.dec.checks.map((k, i) => `<li><span class="ck ${k.st}">${{ pass: "✓", fail: "✕", na: "–", warn: "!" }[k.st]}</span><div><b>${i + 1}. ${k.label}</b><div class="d">${esc(k.d)}</div></div><span class="r">${k.res ? badge(k.res) : ""}</span></li>`).join("")}</ul>`;
+    } else $("#lnRule").innerHTML = `<p class="muted">Not evaluated yet. The rule <b>${r.id} v${r.version}</b> will be applied at the next run.</p>`;
+    let o = "";
+    if (!l.dec) o = `<p class="muted">No outcome yet.</p>`;
+    else if (l.delivery) { const d = db.deliveries.find(x => x.id === l.delivery); o = `<dl class="kv"><dt>Outbound delivery</dt><dd><a href="#/delivery?id=${d.id}">${d.id}</a> ${badge(d.type)}</dd><dt>Delivered quantity</dt><dd>${num(d.qty)} of ${num(l.qty)} pcs</dd><dt>Remaining on schedule line</dt><dd>${d.type === "Full" ? "0 – line closed" : num(l.qty - d.qty) + " pcs stay open for the next run"}</dd><dt>Created by</dt><dd>${esc(d.by)}</dd></dl>`; }
+    else if (l.closed) o = `<p>${esc(l.resolution)}</p>`;
+    else o = `<dl class="kv"><dt>Exception</dt><dd>${esc(l.dec.cat)}</dd><dt>Escalated to</dt><dd>${esc(r.escalate)}</dd><dt>Cut-off</dt><dd>${c.at} (in ${c.txt})</dd><dt>Automatic re-check</dt><dd>${db.settings.gr ? "On goods receipt of " + esc(l.mat) + " and every sweep" : "Every sweep"}</dd></dl>`;
+    $("#lnOutcome").innerHTML = o;
+    $("#lnTrail").innerHTML = (l.trail || []).length ? l.trail.slice().reverse().map(t => `<li class="${t.kind}"><div class="when">${t.when}</div><div class="what">${t.what}</div></li>`).join("") : `<li><div class="what muted">No activity yet.</div></li>`;
+  };
+  $$("[data-anchor]").forEach(a => a.addEventListener("click", () => $("#" + a.dataset.anchor).scrollIntoView({ behavior: "smooth" })));
+  $("#lnActions").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return; const l = L; const act = b.dataset.act;
+    if (act === "run") { App.go("run"); setTimeout(startRun, 200); }
+    if (act === "recheck") recheck(l, true);
+    if (act === "override") overrideDialog(l);
+    if (act === "gr") grDialog(l);
+    if (act === "retry-block") App.modal({ title: "Retry after block release", body: `<p>Confirm the credit block on <b>${esc(cust(l.cust).name)}</b> has been released in S/4HANA (credit management). The line is re-evaluated immediately.</p>`,
+      actions: [{ label: "Cancel" }, { label: "Retry now", kind: "primary", onClick: () => { delete l.flags.credit; trail(l, `${me().name}: retry requested – credit block released in S/4HANA`, "u"); afterRecheck(l, true); } }] });
+    if (act === "route") App.modal({ title: "Maintain route & retry", body: `<p class="muted">${esc(l.flags.noRoute)}</p><div class="field"><label for="mRoute">Route <span class="req">*</span></label><select id="mRoute"><option value="">Select…</option><option>R-PNQ-HBL-06</option><option>R-PNQ-LOC-02</option></select><div class="error"></div></div><p class="muted" style="font-size:.85rem">In build this opens the transport-zone / route determination maintenance in S/4HANA; here it is captured inline.</p>`,
+      actions: [{ label: "Cancel" }, { label: "Save & retry", kind: "primary", onClick: (close, body) => { const s = body.querySelector("#mRoute"); if (!s.value) { s.closest(".field").classList.add("invalid"); s.closest(".field").querySelector(".error").textContent = "Select a route."; return false; }
+        l.route = s.value; trail(l, `${me().name}: route ${s.value} maintained for ship-to; retry requested`, "u"); audit("Override", l.id, `Route ${s.value} maintained for ${l.shipTo}; line retried`); afterRecheck(l, true); } }] });
+  });
+  function recheck(l, manual) {
+    const before = l.dec.decision; const res = evaluate(l, rule(l.cust));
+    trail(l, `${manual ? me().name + ": manual re-check" : "Automatic re-check (goods receipt)"} – ${num(res.avail)} of ${num(l.qty)} available → ${res.decision}`, manual ? "u" : "");
+    if (res.decision === before && !["Full", "Partial"].includes(res.decision)) { l.dec = res; App.toast(`Still ${before.toLowerCase()}: ${num(res.avail)} of ${num(l.qty)} available. Will re-check on goods receipt.`); App.onShow.line({ id: l.id }); return false; }
+    afterRecheck(l, manual); return true;
+  }
+  function afterRecheck(l, manual) {
+    const res = decideAndPost(l, me().name, false);
+    if (l.delivery) { App.toast(`${res.decision} delivery ${l.delivery} created for ${l.id}`, "success"); audit("Re-check", l.id, `${manual ? "Manual" : "Automatic"} re-check → ${res.decision} delivery ${l.delivery}`, manual ? undefined : "System"); }
+    else App.toast(`${l.id}: ${res.decision} – ${res.reason}`, "danger");
+    if (App.current === "line") App.onShow.line({ id: l.id }); refreshShell();
+  }
+  function grDialog(l) {
+    const need = Math.max(10, l.qty - avail(l));
+    App.modal({ title: "Simulate goods receipt (demo)", body: `<p class="muted">Posts a production goods receipt for <b>${esc(l.mat)}</b> into IN10/${l.sloc}, as S/4HANA would send it via Event Mesh.</p>
+      <div class="field"><label for="mGr">Quantity received <span class="req">*</span></label><input id="mGr" type="number" min="1" value="${need}"><div class="error"></div></div>`,
+      actions: [{ label: "Cancel" }, { label: "Post goods receipt", kind: "primary", onClick: (close, body) => {
+        const inp = body.querySelector("#mGr"); const q = +inp.value; if (!q || q < 1) { inp.closest(".field").classList.add("invalid"); inp.closest(".field").querySelector(".error").textContent = "Enter a quantity of at least 1."; return false; }
+        db.lines.filter(x => x.mat === l.mat).forEach(x => { x.stock.unr += q; });
+        if (l.flags.seqGap) delete l.flags.seqGap;
+        trail(l, `Goods receipt 5000348${800 + clockSec} posted: +${num(q)} ${l.mat} (Event Mesh)`);
+        if (db.settings.gr) { const held = db.lines.filter(x => x.mat === l.mat && isOpenExc(x)); held.forEach(x => recheck(x, false)); }
+        else App.toast("Goods receipt posted. Automatic re-check is off – use Re-check now.");
+        App.onShow.line({ id: l.id });
+      } }] });
+  }
+  function overrideDialog(l) {
+    const a = avail(l), jit = l.dec.cat === "JIT sequence gap";
+    App.modal({ title: `Override ${l.id}`, body: `
+      <p class="muted" style="margin-top:0">${esc(l.dec.cat)}: ${num(a)} of ${num(l.qty)} pcs available. Your decision is recorded in the audit log.</p>
+      <label class="radio-card"><input type="radio" name="ov" value="partial" checked>${jit ? "Release the available part of the sequence" : "Release available quantity as a partial delivery"}<div class="d">Creates the delivery now; the remainder stays open.</div></label>
+      <div class="field" id="ovQtyF" style="margin-left:1.6rem"><label for="ovQty">Quantity to deliver <span class="req">*</span></label><input id="ovQty" type="number" min="1" max="${a}" value="${a}"><div class="error"></div></div>
+      ${jit ? `<div class="field" id="ovRefF" style="margin-left:1.6rem"><label for="ovRef">Customer approval reference <span class="req">*</span></label><input id="ovRef" placeholder="e.g. Hanshin JIT desk email 14-Oct 21:50"><div class="error"></div></div>` : ""}
+      <label class="radio-card"><input type="radio" name="ov" value="hold">Keep on hold until stock arrives<div class="d">Stays in the cockpit; re-checked on goods receipt.</div></label>
+      <label class="radio-card"><input type="radio" name="ov" value="close">Close – customer informed, no delivery for this line<div class="d">Removes the exception; the schedule line stays open in S/4HANA.</div></label>
+      <div class="field"><label for="ovReason">Reason code <span class="req">*</span></label><select id="ovReason"><option value="">Select…</option><option>Customer approved partial</option><option>Customer request</option><option>Stock arriving before cut-off</option><option>Quality release pending</option><option>Other</option></select><div class="error"></div></div>
+      <div class="field"><label for="ovCmt">Comment <span class="req">*</span></label><textarea id="ovCmt" rows="2" placeholder="At least 10 characters"></textarea><div class="error"></div></div>`,
+      actions: [{ label: "Cancel" }, { label: "Confirm override", kind: "primary", onClick: (close, body) => {
+        const v = body.querySelector("input[name=ov]:checked").value, err = (id, m) => { const f = body.querySelector(id).closest(".field"); f.classList.toggle("invalid", !!m); f.querySelector(".error").textContent = m || ""; return !m; };
+        let ok = true; const q = +body.querySelector("#ovQty").value;
+        if (v === "partial") { ok = err("#ovQty", !q || q < 1 || q > a ? `Enter 1–${a}.` : "") && ok; if (jit) ok = err("#ovRef", body.querySelector("#ovRef").value.trim().length < 5 ? "Customer approval reference is required for a JIT sequence." : "") && ok; }
+        ok = err("#ovReason", body.querySelector("#ovReason").value ? "" : "Select a reason code.") && ok;
+        ok = err("#ovCmt", body.querySelector("#ovCmt").value.trim().length < 10 ? "Enter at least 10 characters." : "") && ok;
+        if (!ok) return false;
+        const reason = body.querySelector("#ovReason").value, cmt = body.querySelector("#ovCmt").value.trim();
+        l.overridden = true;
+        if (v === "partial") { const id = createDelivery(l, q, "Override – partial", me().name); l.closed = true; l.closedAs = "Override – partial"; l.resolution = `${me().name} released ${num(q)} of ${num(l.qty)} pcs as partial delivery ${id} (${reason}).`;
+          trail(l, `${me().name}: override – released ${num(q)} pcs, delivery <b>${id}</b> created. Reason: ${esc(reason)} – ${esc(cmt)}`, "u"); audit("Override", l.id, `Released ${q} of ${l.qty} pcs as partial delivery ${id} (reason: ${reason}) – ${cmt}`); App.toast(`Delivery ${id} created`, "success"); }
+        if (v === "hold") { l.plannerNote = `${reason} – ${cmt}`; trail(l, `${me().name}: keep on hold. Reason: ${esc(reason)} – ${esc(cmt)}`, "u"); audit("Override", l.id, `Kept on hold (reason: ${reason}) – ${cmt}`); App.toast("Line kept on hold"); }
+        if (v === "close") { l.closed = true; l.closedAs = "Closed"; l.resolution = `${me().name} closed the exception: ${reason} – ${cmt}`; trail(l, `${me().name}: closed exception. Reason: ${esc(reason)} – ${esc(cmt)}`, "u"); audit("Override", l.id, `Closed without delivery (reason: ${reason}) – ${cmt}`); App.toast("Exception closed"); }
+        refreshShell(); App.onShow[App.current](App.params);
+      } }] });
+    const body = $("#modalBody"); const sync = () => { const p = body.querySelector("input[name=ov]:checked").value === "partial"; body.querySelector("#ovQtyF").hidden = !p; const r = body.querySelector("#ovRefF"); if (r) r.hidden = !p; };
+    body.querySelectorAll("input[name=ov]").forEach(r => r.addEventListener("change", sync));
+  }
+
+  /* ---------------- 5. Exceptions ---------------- */
+  const CATS = ["Below minimum fill", "Partials not allowed", "JIT sequence gap", "Credit / delivery block", "Missing master data"];
+  let excTab = "All";
+  App.onShow["exceptions"] = () => {
+    const open = db.lines.filter(isOpenExc);
+    $("#excTabs").innerHTML = ["All", ...CATS].map(c => `<button class="itab ${c === excTab ? "on" : ""}" data-tab="${c}">${c} <span class="cnt">${c === "All" ? open.length : open.filter(l => l.dec.cat === c).length}</span></button>`).join("");
+    const rows = open.filter(l => excTab === "All" || l.dec.cat === excTab).sort((a, b) => cutoffInfo(a).mins - cutoffInfo(b).mins);
+    $("#excTable tbody").innerHTML = rows.map(l => { const c = cutoffInfo(l); return `<tr>
+      <td><a href="#/line?id=${l.id}"><b>${l.id}</b></a><span class="sub">${l.saType} ${l.sa}/${l.item}${l.jit ? " · " + l.jit : ""}</span></td>
+      <td>${esc(custShort(l.cust))}<span class="sub">${esc(l.shipTo)}</span></td><td>${esc(l.mat)}<span class="sub">${esc(l.matDesc)}</span></td>
+      <td>${badge(l.dec.decision)}<span class="sub">${esc(l.dec.cat)}${l.plannerNote ? " · planner: keep on hold" : ""}</span></td>
+      <td class="num-cell">${num(l.qty)} / ${num(avail(l))}</td><td><span class="sla ${c.cls}">${c.txt}</span><span class="sub">cut-off ${c.at}</span></td>
+      <td>${esc(rule(l.cust).escalate)}</td><td><a class="btn sm ${App.role === "planner" ? "primary" : ""}" href="#/line?id=${l.id}">${App.role === "planner" ? "Resolve" : "View"}</a></td></tr>`; }).join("");
+    const none = !rows.length; $("#excEmpty").hidden = !none; $("#excTable").hidden = none;
+    const ran = db.lines.some(l => l.dec);
+    $("#excEmptyTitle").textContent = ran ? "No open exceptions" : "No exceptions yet";
+    $("#excEmptyText").textContent = ran ? (excTab === "All" ? "Every due line was delivered or resolved." : "Nothing open for this reason.") : "Run the automation from the Overview to process the current batch.";
+    $("#excRecheck").disabled = !open.length;
+  };
+  $("#excTabs").addEventListener("click", (e) => { const t = e.target.closest("[data-tab]"); if (t) { excTab = t.dataset.tab; App.onShow.exceptions(); } });
+  $("#excRecheck").addEventListener("click", () => { const open = db.lines.filter(isOpenExc); let n = 0; open.forEach(l => { const before = l.delivery; const r = evaluate(l, rule(l.cust)); trail(l, `${me().name}: re-check all – ${r.decision}`, "u"); if (["Full", "Partial"].includes(r.decision)) { afterRecheck(l, true); if (l.delivery !== before) n++; } else l.dec = r; });
+    App.toast(n ? `${n} line(s) delivered after re-check` : `Re-checked ${open.length} lines – no change in stock or blocks`, n ? "success" : ""); App.onShow.exceptions(); });
+
+  /* ---------------- 6/7. Deliveries ---------------- */
+  function renderDel() {
+    const q = $("#dlSearch").value.trim().toLowerCase(), t = $("#dlType").value, by = $("#dlBy").value;
+    const rows = db.deliveries.filter(d => (!q || [d.id, d.sa, d.mat].join(" ").toLowerCase().includes(q)) && (!t || d.type === t) && (!by || (by === "Automation" ? d.by === "Automation" : d.by !== "Automation"))).sort((a, b) => b.created.localeCompare(a.created));
+    $("#dlCount").textContent = `Deliveries (${rows.length})`;
+    $("#dlTable tbody").innerHTML = rows.map(d => `<tr data-go="delivery?id=${d.id}"><td><b>${d.id}</b></td><td>${esc(custShort(d.cust))}</td><td>${d.sa}</td><td>${esc(d.mat)}</td><td class="num-cell">${num(d.qty)}</td><td>${badge(d.type)}</td><td>${d.route}<span class="sub">${d.shipPt}</span></td><td>${dt(d.created)}<span class="sub">${esc(d.by)}</span></td><td><span class="status ${d.pick === "Goods issued" ? "success" : d.pick === "Not started" ? "neutral" : "info"}">${d.pick}</span></td></tr>`).join("");
+    $("#dlEmpty").hidden = rows.length > 0; $("#dlTable").hidden = !rows.length;
+  }
+  App.onShow["deliveries"] = renderDel;
+  ["#dlSearch", "#dlType", "#dlBy"].forEach(s => $(s).addEventListener(s === "#dlSearch" ? "input" : "change", renderDel));
+  App.onShow["delivery"] = ({ id }) => {
+    const d = db.deliveries.find(x => x.id === id) || db.deliveries[0]; const l = db.lines.find(x => x.id === d.line);
+    $("#dvCrumb").textContent = d.id; $("#dvTitle").innerHTML = `Outbound delivery ${d.id} ${badge(d.type)}`; $("#dvSub").textContent = `${cust(d.cust).name} · created ${dt(d.created)} by ${d.by}`;
+    $("#dvFacts").innerHTML = [["Quantity", num(d.qty) + " pcs"], ["Material", d.mat], ["Planned GI", l ? dt(new Date(new Date(l.due).getTime() - 2 * 3600e3)) : "—"], ["Picking", d.pick]].map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`).join("");
+    $("#dvRef").innerHTML = `<dt>Scheduling agreement</dt><dd>${d.sa} ${l ? "/ " + l.item + " (" + l.saType + ")" : ""}</dd><dt>JIT call</dt><dd>${l && l.jit ? l.jit + " · seq " + l.seq : "—"}</dd><dt>Schedule line</dt><dd>${l ? `<a href="#/line?id=${l.id}">${l.id}</a>` : d.line}</dd><dt>Decided by</dt><dd>${d.by === "Automation" ? `Rule ${rule(d.cust).id} v${rule(d.cust).version}` : esc(d.by) + " (override)"}</dd>`;
+    $("#dvShip").innerHTML = `<dt>Ship-to</dt><dd>${l ? esc(l.shipTo) : "—"}</dd><dt>Unloading point</dt><dd>${l ? esc(l.unload) : "—"}</dd><dt>Route</dt><dd>${d.route}</dd><dt>Shipping point</dt><dd>${d.shipPt}</dd><dt>Consolidation</dt><dd>${rule(d.cust).consolidation}</dd>`;
+    $("#dvItems tbody").innerHTML = `<tr><td>000010</td><td>${esc(d.mat)}${l ? `<span class="sub">${esc(l.matDesc)}</span>` : ""}</td><td class="num-cell">${num(d.qty)}</td><td>${l ? l.sloc : "FG01"}</td><td>SA ${d.sa}${l ? " / " + l.item : ""}</td></tr>`;
+  };
+  $("#dvOpenS4").addEventListener("click", () => App.toast("Opens Manage Outbound Deliveries in S/4HANA (mocked)"));
+
+  /* ---------------- 8/9/10. Rules ---------------- */
+  db.drafts = db.drafts || {};
+  App.onShow["rules"] = () => {
+    const K = App.role === "keyuser"; const dr = db.drafts;
+    $("#ruleTable tbody").innerHTML = db.rules.map(r => { const d = dr[r.id]; return `<tr>
+      <td><b>${esc(cust(r.cust).name)}</b><span class="sub">${r.id} · ${cust(r.cust).type}</span></td>
+      <td>${r.partials ? '<span class="status success">Allowed</span>' : '<span class="status danger">Not allowed</span>'}</td>
+      <td class="num-cell">${r.partials ? r.minFill + "%" : "—"}</td><td class="num-cell">${r.tolUnder}%</td><td>${r.seqComplete ? "Ship complete" : "—"}</td><td>${r.consolidation}</td><td class="num-cell">${r.cutoffHrs} h</td>
+      <td>v${r.version}<span class="sub">since ${App.date(r.effective)}</span></td>
+      <td><span class="pill green">Active</span>${d ? ' <span class="pill amber">Draft v' + (r.version + 1) + "</span>" : ""}</td>
+      <td>${K ? `<a class="btn sm" href="#/rule-edit?id=${r.id}">${d ? "Continue draft" : "Edit"}</a>` : ""}</td></tr>`; }).join("");
+  };
+  let RE = null;
+  App.onShow["rule-edit"] = ({ id }) => {
+    const r = db.rules.find(x => x.id === id) || db.rules[1]; RE = r; const d = db.drafts[r.id] || { ...r, why: "", effective: "2026-10-15" };
+    $("#reCrumb").textContent = r.id; $("#reTitle").textContent = `${cust(r.cust).name} – draft v${r.version + 1}`;
+    $("#reSub").textContent = `Active: v${r.version} since ${App.date(r.effective)}, changed by ${r.changedBy}`;
+    const f = $("#ruleForm"); f.querySelectorAll(".field").forEach(x => { x.classList.remove("invalid"); const e = x.querySelector(".error"); if (e) e.textContent = ""; });
+    $("#rPartials").checked = d.partials; $("#rMin").value = d.minFill; $("#rTol").value = d.tolUnder; $("#rSeq").checked = d.seqComplete; $("#rCons").value = d.consolidation;
+    $("#rCut").value = d.cutoffHrs; $("#rEsc").value = d.escalate; $("#rEff").value = d.effective; $("#rWhy").value = d.why || ""; syncPartials();
+    $("#rSeq").closest(".field").querySelector("label").lastChild.textContent = r.cust === "C-100231" ? " JIT sequence must ship complete" : " JIT sequence must ship complete (no JIT calls for this customer)";
+  };
+  function syncPartials() { $("#rMin").disabled = !$("#rPartials").checked; }
+  $("#rPartials").addEventListener("change", syncPartials);
+  function saveDraft() {
+    const ok = App.validate($("#ruleForm"), { effective: (el) => el.value < "2026-10-14" ? "Effective date cannot be in the past." : "", why: (el) => el.value.trim().length < 10 ? "Enter at least 10 characters." : "" });
+    if (!ok) return null;
+    const f = $("#ruleForm");
+    const d = { ...RE, partials: $("#rPartials").checked, minFill: +$("#rMin").value, tolUnder: +$("#rTol").value, seqComplete: $("#rSeq").checked, consolidation: $("#rCons").value, cutoffHrs: +$("#rCut").value, escalate: $("#rEsc").value, effective: $("#rEff").value, why: $("#rWhy").value.trim() };
+    db.drafts[RE.id] = d; return d;
+  }
+  $("#reSave").addEventListener("click", () => { if (saveDraft()) { App.toast(`Draft v${RE.version + 1} saved – simulate before activating`, "success"); App.go("rules"); } });
+  $("#reSim").addEventListener("click", () => { if (saveDraft()) App.go("rule-sim?id=" + RE.id); });
+
+  function history(custId) {
+    const fills = [100, 100, 98, 97, 96, 92, 90, 88, 85, 83, 81, 79, 76, 72, 70, 65, 60, 55, 100, 100, 100, 94, 89, 78, 50, 99, 86, 74];
+    const hist = fills.map((f, i) => { const q = 100 + (i * 37) % 300; return { id: `SL-23${pad(7 + (i % 7))}${pad(i)}`.replace("SL-23", "SL-23"), due: `2026-10-${pad(7 + (i % 7))}T${pad(6 + i % 10)}:00`, qty: q, stock: { unr: Math.round(q * f / 100), alloc: 0, qi: 0, blocked: 0 }, flags: {}, route: "R", saType: "LZ", cust: custId }; });
+    return hist.concat(db.lines.filter(l => l.cust === custId));
+  }
+  let SIM = null;
+  App.onShow["rule-sim"] = ({ id }) => {
+    const act = db.rules.find(x => x.id === id) || db.rules[1]; const dr = db.drafts[act.id] || { ...act };
+    SIM = { act, dr };
+    $("#rsTitle").textContent = `Simulate ${cust(act.cust).name}: v${act.version} → draft v${act.version + 1}`;
+    $("#rsSub").textContent = `Replays 7 days of demand (7–13 Oct) and the current batch against both versions · effective from ${App.date(dr.effective)}`;
+    const lines = history(act.cust).map(l => ({ l, a: evaluate({ ...l, flags: { ...l.flags } }, act), d: evaluate({ ...l, flags: { ...l.flags } }, dr) }));
+    const changed = lines.filter(x => x.a.decision !== x.d.decision);
+    const cnt = (k, d) => lines.filter(x => x[k].decision === d).length;
+    const tl = (k) => (cnt(k, "Full") + cnt(k, "Partial")) / lines.length * 100;
+    const holds = (k) => cnt(k, "Hold") + cnt(k, "No delivery");
+    $("#rsKpis").innerHTML = [["Lines replayed", lines.length, ""], ["Decisions changed", changed.length, changed.length ? "warn" : "good"], ["Touchless rate", `${tl("a").toFixed(0)}% → ${tl("d").toFixed(0)}%`, tl("d") >= tl("a") ? "good" : "bad"], ["Holds / exceptions", `${holds("a")} → ${holds("d")}`, holds("d") <= holds("a") ? "good" : "bad"]]
+      .map(([l, v, c]) => `<div class="kpi"><div class="lbl">${l}</div><div class="val ${c}" style="font-size:1.6rem">${v}</div></div>`).join("");
+    const fields = [["Partials allowed", (r) => r.partials ? "Yes" : "No"], ["Minimum fill", (r) => r.minFill + "%"], ["Under-delivery tolerance", (r) => r.tolUnder + "%"], ["JIT sequence complete", (r) => r.seqComplete ? "Yes" : "No"], ["Consolidation", (r) => r.consolidation], ["Cut-off lead time", (r) => r.cutoffHrs + " h"], ["Escalate to", (r) => r.escalate], ["Effective from", (r) => App.date(r.effective)]];
+    $("#rsDiff tbody").innerHTML = fields.map(([n, f]) => { const a = f(act), d = f(dr); return `<tr><td>${n}</td><td>${esc(a)}</td><td>${a !== d ? `<b style="color:var(--primary)">${esc(d)}</b>` : esc(d)}</td></tr>`; }).join("");
+    const decs = ["Full", "Partial", "Hold"]; const mx = Math.max(...decs.flatMap(d => [cnt("a", d), cnt("d", d)]), 1);
+    $("#rsBars").innerHTML = decs.map(d => `<div class="hbar"><span>${badge(d)}</span><div><div class="bar" title="Active"><i style="width:${cnt("a", d) / mx * 100}%;background:var(--c6);opacity:.45"></i></div><div class="bar" style="margin-top:3px" title="Draft"><i style="width:${cnt("d", d) / mx * 100}%;background:var(--c1)"></i></div></div><span class="n">${cnt("a", d)} → ${cnt("d", d)}</span></div>`).join("") + `<div class="legend"><span><i style="background:var(--c6);opacity:.45"></i>Active v${act.version}</span><span><i style="background:var(--c1)"></i>Draft v${act.version + 1}</span></div>`;
+    $("#rsChCount").textContent = `${changed.length} of ${lines.length}`;
+    $("#rsTable tbody").innerHTML = changed.map(x => `<tr><td><b>${x.l.id}</b>${x.l.scen ? `<span class="sub">current batch</span>` : ""}</td><td>${dt(x.l.due)}</td><td class="num-cell">${num(x.l.qty)} / ${num(x.a.avail)}</td><td class="num-cell">${x.a.fill}%</td><td>${badge(x.a.decision)}</td><td>${badge(x.d.decision)}</td></tr>`).join("");
+    $("#rsEmpty").hidden = changed.length > 0; $("#rsTable").hidden = !changed.length;
+  };
+  $("#rsBack").addEventListener("click", () => App.go("rule-edit?id=" + SIM.act.id));
+  $("#rsActivate").addEventListener("click", () => {
+    const { act, dr } = SIM;
+    App.modal({ title: `Activate version ${act.version + 1}?`, body: `<p>The new rule for <b>${esc(cust(act.cust).name)}</b> applies from <b>${App.date(dr.effective)}</b> to every run. Open exceptions for this customer are re-evaluated now.</p>`,
+      actions: [{ label: "Cancel" }, { label: "Activate", kind: "primary", onClick: () => {
+        const before = { ...act }; Object.assign(act, { partials: dr.partials, minFill: dr.minFill, tolUnder: dr.tolUnder, seqComplete: dr.seqComplete, consolidation: dr.consolidation, cutoffHrs: dr.cutoffHrs, escalate: dr.escalate, effective: dr.effective, version: act.version + 1, changedBy: me().name, changedOn: "2026-10-14" });
+        delete db.drafts[act.id];
+        const chg = []; if (before.minFill !== act.minFill) chg.push(`min fill ${before.minFill}% → ${act.minFill}%`); if (before.partials !== act.partials) chg.push(`partials ${before.partials ? "allowed" : "not allowed"} → ${act.partials ? "allowed" : "not allowed"}`); if (before.tolUnder !== act.tolUnder) chg.push(`tolerance ${before.tolUnder}% → ${act.tolUnder}%`); if (before.cutoffHrs !== act.cutoffHrs) chg.push(`cut-off ${before.cutoffHrs} h → ${act.cutoffHrs} h`);
+        audit("Rule change", `${act.id} ${custShort(act.cust)}`, `Version ${act.version} activated: ${chg.join(", ") || "no parameter change"}. Reason: ${dr.why}`);
+        let n = 0; db.lines.filter(l => l.cust === act.cust && isOpenExc(l)).forEach(l => { const r = evaluate(l, act); if (["Full", "Partial"].includes(r.decision)) { trail(l, `Rule ${act.id} v${act.version} activated by ${me().name} – line re-evaluated`); afterRecheck(l, false); n++; } });
+        App.toast(`Version ${act.version} active${n ? ` – ${n} open exception(s) now delivered` : ""}`, "success"); App.go("rules");
+      } }] });
+  });
+
+  /* ---------------- 11. Settings ---------------- */
+  App.onShow["settings"] = () => { const s = db.settings; $("#sEvent").checked = s.event; $("#sSweep").value = s.sweep; $("#sHor").value = s.horizon; $("#sRet").value = s.retries; $("#sAlert").value = s.alertHrs; $("#sInapp").checked = s.inapp; $("#sEmail").checked = s.email; $("#sTeams").checked = s.teams; $("#sGr").checked = s.gr;
+    $("#setForm").querySelectorAll(".field").forEach(x => { x.classList.remove("invalid"); const e = x.querySelector(".error"); if (e) e.textContent = ""; }); };
+  $("#setForm").addEventListener("submit", (e) => { e.preventDefault();
+    if (!App.validate(e.target, { alertHrs: () => !$("#sInapp").checked && !$("#sEmail").checked && !$("#sTeams").checked ? "Select at least one alert channel." : "" })) return;
+    const s = db.settings, old = JSON.stringify(s);
+    Object.assign(s, { event: $("#sEvent").checked, sweep: +$("#sSweep").value, horizon: +$("#sHor").value, retries: +$("#sRet").value, alertHrs: +$("#sAlert").value, inapp: $("#sInapp").checked, email: $("#sEmail").checked, teams: $("#sTeams").checked, gr: $("#sGr").checked });
+    if (old !== JSON.stringify(s)) audit("Settings", "Run settings", `Sweep ${s.sweep} min, horizon ${s.horizon} h, retries ${s.retries}, alert ${s.alertHrs} h before cut-off (${["inapp", "email", "teams"].filter(k => s[k]).join(", ")}), GR re-check ${s.gr ? "on" : "off"}`);
+    App.toast("Settings saved", "success"); refreshShell(); });
+
+  /* ---------------- 12. Analytics ---------------- */
+  App.onShow["analytics"] = () => {
+    const t = totals();
+    $("#anKpis").innerHTML = [["Touchless rate today", t.touchless.toFixed(1) + "%", "good", "target 90%"], ["Week 41 average", "91.4%", "good", "+0.6 pt vs W40"], ["Exceptions today", t.hold + t.nodel + t.skip, "warn", `${t.open} still open`], ["Planner overrides", t.overrides, "", "all with reason"], ["On-time vs JIT window", db.today.onTime + "%", "good", "manual baseline 94.1%"], ["Planner hours saved", "≈ 41 h", "brand", "this week (est.)"]]
+      .map(([l, v, c, s]) => `<div class="kpi"><div class="lbl">${l}</div><div class="val ${c}">${v}</div><div class="sub">${s}</div></div>`).join("");
+    const W = 560, H = 230, pl = 36, pb = 28, bw = (W - pl - 10) / db.weekly.length;
+    const y = (v) => H - pb - v / 100 * (H - pb - 14);
+    $("#anTrend").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Touchless rate by week">
+      ${[0, 50, 100].map(v => `<line x1="${pl}" x2="${W - 6}" y1="${y(v)}" y2="${y(v)}" stroke="#d9dde1" stroke-width="1"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`).join("")}
+      <line x1="${pl}" x2="${W - 6}" y1="${y(90)}" y2="${y(90)}" stroke="#FE6266" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${pl + 4}" y="${y(90) - 5}" text-anchor="start" style="fill:#bb0000">target 90%</text>
+      ${db.weekly.map((w, i) => { const x = pl + i * bw + bw * .18, bwi = bw * .64; return w.touchless ? `<rect x="${x}" y="${y(w.touchless)}" width="${bwi}" height="${H - pb - y(w.touchless)}" rx="3" fill="#0087D5"/><text class="vl" x="${x + bwi / 2}" y="${y(w.touchless) - 5}" text-anchor="middle">${w.touchless}</text>` : `<text x="${x + bwi / 2}" y="${H - pb - 6}" text-anchor="middle">manual</text>`; }).join("")}
+      ${db.weekly.map((w, i) => `<text x="${pl + i * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${w.wk}</text>`).join("")}</svg>`;
+    const open = db.lines.filter(l => l.dec && !["Full", "Partial"].includes(l.dec.decision));
+    const reasons = [["Below minimum fill", 31], ["Partials not allowed", 27], ["Missing master data", 22], ["Credit / delivery block", 12], ["JIT sequence gap", 9]].map(([r, n]) => [r, n + open.filter(l => l.dec.cat === r).length]);
+    const mx = Math.max(...reasons.map(r => r[1]));
+    $("#anReasons").innerHTML = reasons.map(([r, n], i) => `<div class="hbar" style="grid-template-columns:170px 1fr 40px"><span>${r}</span><div class="bar"><i style="width:${n / mx * 100}%;background:var(--c${[3, 2, 4, 6, 1][i]})"></i></div><span class="n">${n}</span></div>`).join("") + `<p class="muted" style="font-size:.82rem;margin-bottom:0">Master-data exceptions are the cheapest to remove: 18 of 22 are ship-tos without a transport zone.</p>`;
+    const cd = { "C-100231": [412, 97.1, 8, 2], "C-100457": [318, 89.0, 21, 4], "C-100612": [201, 84.6, 26, 3], "C-200118": [97, 88.7, 9, 1], "C-300045": [158, 94.3, 11, 1] };
+    $("#anCust").querySelector("tbody").innerHTML = Object.entries(cd).map(([c, [n, tlr, ex, ov]]) => `<tr><td>${esc(cust(c).name)}<span class="sub">${cust(c).type}</span></td><td class="num-cell">${n}</td><td class="num-cell"><span class="status ${tlr >= 90 ? "success" : "warning"}">${tlr}%</span></td><td class="num-cell">${ex}</td><td class="num-cell">${ov}</td><td>${rule(c).id} v${rule(c).version}</td></tr>`).join("");
+  };
+
+  /* ---------------- 13. Audit ---------------- */
+  function renderAudit() {
+    const q = $("#auSearch").value.trim().toLowerCase(), t = $("#auType").value;
+    const rows = db.audit.filter(a => (!t || a.type === t) && (!q || [a.user, a.obj, a.detail].join(" ").toLowerCase().includes(q)));
+    $("#auTable tbody").innerHTML = rows.map(a => `<tr><td class="mono">${dt(a.ts)}</td><td>${esc(a.user)}</td><td><span class="pill ${a.type === "Override" ? "amber" : a.type === "Rule change" ? "blue" : ""}">${a.type}</span></td><td>${esc(a.obj)}</td><td>${esc(a.detail)}</td></tr>`).join("");
+    $("#auEmpty").hidden = rows.length > 0; $("#auTable").hidden = !rows.length;
+  }
+  App.onShow["audit"] = renderAudit;
+  $("#auSearch").addEventListener("input", renderAudit); $("#auType").addEventListener("change", renderAudit);
+
+  // Status colours for run table etc.
+  const sc = App.statusClass; App.statusClass = (s) => ({ "Completed": "success", "Completed with retries": "warning" }[s] || sc(s));
+  document.addEventListener("DOMContentLoaded", refreshShell);
+})();
+
+</script>
+</body>
+</html>
